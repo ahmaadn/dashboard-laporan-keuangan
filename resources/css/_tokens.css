@@ -1,0 +1,141 @@
+/* ===========================================================================
+   LeatherDash — Design Tokens (Saniti design system → CSS custom properties)
+   Maps DESIGN.md front-matter onto CSS vars + Bootstrap variable overrides.
+   Inter substitutes proprietary waldenburgNormal (per DESIGN.md font note).
+   =========================================================================== */
+
+:root {
+    /* --- Brand & Accent --- */
+    --ld-brand: #f36458;
+    --ld-brand-deep: #dd0000;
+
+    /* --- Surface --- */
+    --ld-canvas: #1c1108;
+    --ld-canvas-soft: #2c1d10;
+    --ld-canvas-light: #ffffff;
+    --ld-canvas-paper: #ededed;
+    --ld-hairline: #ededed;
+    --ld-hairline-soft: #3d2a1a;
+
+    /* --- Text --- */
+    --ld-ink: #1c1108;
+    --ld-ink-soft: #2c1d10;
+    --ld-graphite: #3d2a1a;
+    --ld-mute: #8a7a6a;
+    --ld-ash: #c4b8aa;
+    --ld-on-primary: #ffffff;
+
+    /* --- Semantic --- */
+    --ld-success: #37cd84;
+    --ld-error: #dd0000;
+    --ld-link: #0052ef;
+    --ld-link-soft: #55beff;
+    --ld-surface-blue-bg: #afe3ff;
+
+    /* --- Border radius --- */
+    --ld-r-app-xs: 3px;
+    --ld-r-app-sm: 4px;
+    --ld-r-app-md: 5px;
+    --ld-r-app-lg: 6px;
+    --ld-r-marketing: 12px;
+    --ld-r-full: 9999px;
+
+    /* --- Spacing --- */
+    --ld-space-xxs: 4px;
+    --ld-space-xs: 8px;
+    --ld-space-sm: 12px;
+    --ld-space-md: 16px;
+    --ld-space-lg: 24px;
+    --ld-space-xl: 32px;
+    --ld-space-xxl: 48px;
+    --ld-space-section: 64px;
+    --ld-space-section-lg: 96px;
+
+    /* --- Fonts --- */
+    --ld-font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --ld-font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
+    /* --- Bootstrap variable overrides --- */
+    --bs-body-bg: var(--ld-canvas-light);
+    --bs-body-color: var(--ld-ink);
+    --bs-body-font-family: var(--ld-font-sans);
+    --bs-body-font-size: 1rem;
+    --bs-body-line-height: 1.5;
+    --bs-emphasis-color: var(--ld-ink);
+    --bs-secondary-color: var(--ld-mute);
+    --bs-tertiary-color: var(--ld-mute);
+    --bs-primary: var(--ld-ink);
+    --bs-primary-rgb: 28, 17, 8;
+    --bs-primary-text-emphasis: var(--ld-ink);
+    --bs-primary-bg-subtle: var(--ld-canvas-paper);
+    --bs-primary-border-subtle: var(--ld-ash);
+    --bs-border-color: var(--ld-hairline);
+    --bs-border-radius: var(--ld-r-app-md);
+    --bs-border-radius-sm: var(--ld-r-app-sm);
+    --bs-border-radius-lg: var(--ld-r-app-lg);
+    --bs-border-radius-xl: var(--ld-r-marketing);
+    --bs-link-color: var(--ld-link);
+    --bs-link-color-rgb: 0, 82, 239;
+    --bs-link-hover-color: #0040b8;
+    --bs-link-hover-color-rgb: 0, 64, 184;
+    --bs-font-sans-serif: var(--ld-font-sans);
+    --bs-font-monospace: var(--ld-font-mono);
+    --bs-heading-color: var(--ld-ink);
+    --bs-danger: var(--ld-error);
+    --bs-danger-rgb: 221, 0, 0;
+    --bs-success: var(--ld-success);
+    --bs-success-rgb: 55, 205, 132;
+}
+
+/* --- Type scale utilities (Inter substituted for waldenburgNormal) --- */
+.ld-display-sm,
+.ld-display-md,
+.ld-display-lg,
+.ld-heading-md,
+.ld-heading-sm,
+.ld-subtitle {
+    font-family: var(--ld-font-sans);
+    font-weight: 400;
+    color: var(--ld-ink);
+    margin: 0;
+    line-height: 1.1;
+}
+.ld-display-lg { font-size: clamp(2.5rem, 6vw, 3.75rem); letter-spacing: -2.4px; }
+.ld-display-md { font-size: clamp(2rem, 5vw, 3rem); letter-spacing: -1.68px; }
+.ld-display-sm { font-size: clamp(1.75rem, 4vw, 2.375rem); letter-spacing: -1.14px; }
+.ld-heading-md { font-size: 2rem; font-weight: 425; line-height: 1.13; letter-spacing: -0.32px; }
+.ld-heading-sm { font-size: 1.5rem; line-height: 1.1; letter-spacing: -0.24px; }
+.ld-subtitle { font-size: 1.125rem; line-height: 1.5; letter-spacing: -0.18px; }
+.ld-body { font-size: 1rem; line-height: 1.5; }
+.ld-body-sm { font-size: 0.9375rem; line-height: 1.5; letter-spacing: -0.15px; }
+.ld-caption { font-size: 0.8125rem; line-height: 1.5; color: var(--ld-mute); }
+.ld-meta { font-size: 0.75rem; line-height: 1.5; letter-spacing: -0.12px; color: var(--ld-mute); }
+
+/* --- Mono labelling system (IBM Plex Mono) --- */
+.ld-eyebrow {
+    font-family: var(--ld-font-mono);
+    font-size: 0.8125rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--ld-mute);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    margin: 0;
+}
+.ld-mono-caps {
+    font-family: var(--ld-font-mono);
+    font-size: 0.6875rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--ld-mute);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.ld-mono-micro {
+    font-family: var(--ld-font-mono);
+    font-size: 0.625rem;
+    line-height: 1.3;
+    color: var(--ld-mute);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
