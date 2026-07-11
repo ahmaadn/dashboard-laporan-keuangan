@@ -13,12 +13,20 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
-            $table->string('email')->unique();
+            $table->string('nama', 100);
+            $table->string('username', 50)->unique();
+            $table->string('email', 100)->unique();
+            $table->string('password')->comment('Password ter-hash (bcrypt/argon2)');
+            $table->enum('peran', ['admin', 'pegawai'])->default('pegawai');
+            $table->boolean('dapat_melihat_dashboard')->default(false)
+                ->comment('Khusus peran pegawai; admin selalu TRUE secara logika aplikasi');
+            $table->boolean('is_active')->default(true);
             $table->timestamp('email_verified_at')->nullable();
-            $table->string('password');
             $table->rememberToken();
             $table->timestamps();
+            $table->softDeletes()->comment('Soft delete; NULL = data aktif');
+
+            $table->index('deleted_at');
         });
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {

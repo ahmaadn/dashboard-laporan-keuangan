@@ -7,7 +7,7 @@
         : '';
 @endphp
 
-<a class="ld-sidebar__brand ld-brand-mark" href="/dashboard">
+<a class="ld-sidebar__brand ld-brand-mark" href="{{ !empty($currentUser) && $currentUser['dapat_melihat_dashboard'] ? '/dashboard' : '/income' }}">
     <span class="ld-brand-dot"></span>
     <span class="ld-brand-wordmark">LeatherDash</span>
 </a>

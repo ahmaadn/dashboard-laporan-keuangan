@@ -1,89 +1,88 @@
 <?php
 
-use App\Services\Mock\MockData;
+use App\Models\Expense;
+use App\Models\ExpenseCategory;
+use App\Models\Income;
+use App\Models\Product;
+use App\Models\User;
 
-describe('report exports', function () {
-    foreach ([
-        ['period' => 'bulan_ini', 'start' => null, 'end' => null],
-        ['period' => 'tahun_ini', 'start' => null, 'end' => null],
-        ['period' => 'rentang', 'start' => '2026-01-01', 'end' => '2026-06-30'],
-    ] as $case) {
-        $label = $case['period'].($case['start'] ? "-{$case['start']}" : '');
+describe('report page', function () {
+    it('shows report for admin', function () {
+        $admin = User::factory()->admin()->create();
+        $product = Product::factory()->create();
+        Income::factory()->create([
+            'product_id' => $product->id,
+            'user_id' => $admin->id,
+            'tanggal_transaksi' => today(),
+            'total' => 250000,
+        ]);
 
-        test("pdf export downloads as application/pdf for {$label}", function () use ($case) {
-            $admin = MockData::profiles()[0];
-            $query = array_filter([
-                'period' => $case['period'],
-                'start' => $case['start'],
-                'end' => $case['end'],
-            ]);
+        $response = $this->actingAs($admin)->get('/reports?period=bulan_ini');
 
-            $this->withUnencryptedCookie('ld_profile', json_encode($admin))
-                ->get('/reports/export/pdf?'.http_build_query($query))
-                ->assertSuccessful()
-                ->assertHeader('Content-Type', 'application/pdf')
-                ->assertHeaderMissing('Content-Length: 0');
-        });
+        $response->assertOk()->assertSee('250.000');
+    });
 
-        test("pdf filename reflects the period for {$label}", function () use ($case) {
-            $admin = MockData::profiles()[0];
-            $query = array_filter([
-                'period' => $case['period'],
-                'start' => $case['start'],
-                'end' => $case['end'],
-            ]);
+    it('excludes soft-deleted from report', function () {
+        $admin = User::factory()->admin()->create();
+        $product = Product::factory()->create();
+        Income::factory()->create([
+            'product_id' => $product->id,
+            'user_id' => $admin->id,
+            'tanggal_transaksi' => today(),
+            'total' => 100000,
+        ]);
+        Income::factory()->create([
+            'product_id' => $product->id,
+            'user_id' => $admin->id,
+            'tanggal_transaksi' => today(),
+            'total' => 50000,
+        ])->delete();
 
-            $response = $this->withUnencryptedCookie('ld_profile', json_encode($admin))
-                ->get('/reports/export/pdf?'.http_build_query($query));
+        $response = $this->actingAs($admin)->get('/reports?period=bulan_ini');
 
-            $disposition = (string) $response->headers->get('Content-Disposition');
-            expect($disposition)->toContain('attachment')
-                ->and($disposition)->toContain('laporan-keuangan-')
-                ->and($disposition)->toContain('.pdf');
-        });
+        $report = $response->viewData('report');
+        expect($report['totalIncome'])->toBe(100000.0);
+    });
+});
 
-        test("excel export downloads for {$label}", function () use ($case) {
-            $admin = MockData::profiles()[0];
-            $query = array_filter([
-                'period' => $case['period'],
-                'start' => $case['start'],
-                'end' => $case['end'],
-            ]);
+describe('pdf export', function () {
+    it('downloads as pdf', function () {
+        $admin = User::factory()->admin()->create();
 
-            $this->withUnencryptedCookie('ld_profile', json_encode($admin))
-                ->get('/reports/export/excel?'.http_build_query($query))
-                ->assertSuccessful()
-                ->assertHeader('Content-Type', 'application/vnd.ms-excel; charset=UTF-8')
-                ->assertSee('<Workbook', false)
-                ->assertSee('Pemasukan per Produk', false)
-                ->assertSee('Pengeluaran per Kategori', false);
-        });
-
-        test("excel filename reflects the period for {$label}", function () use ($case) {
-            $admin = MockData::profiles()[0];
-            $query = array_filter([
-                'period' => $case['period'],
-                'start' => $case['start'],
-                'end' => $case['end'],
-            ]);
-
-            $response = $this->withUnencryptedCookie('ld_profile', json_encode($admin))
-                ->get('/reports/export/excel?'.http_build_query($query));
-
-            expect($response->headers->get('Content-Disposition'))
-                ->toStartWith('attachment; filename="laporan-keuangan-')
-                ->toEndWith('.xls"');
-        });
-    }
-
-    it('render passes through to the selected period range label', function () {
-        $report = MockData::reportSummary('tahun_ini');
-        $admin = MockData::profiles()[0];
-
-        $response = $this->withUnencryptedCookie('ld_profile', json_encode($admin))
-            ->get('/reports/export/pdf?period=tahun_ini');
+        $response = $this->actingAs($admin)->get('/reports/export/pdf?period=bulan_ini');
 
         $response->assertSuccessful()->assertHeader('Content-Type', 'application/pdf');
-        expect(MockData::reportSummary('tahun_ini')['rangeLabel'])->toBe($report['rangeLabel']);
+        $disposition = (string) $response->headers->get('Content-Disposition');
+        expect($disposition)->toContain('laporan-keuangan-')->toContain('.pdf');
+    });
+});
+
+describe('excel export', function () {
+    it('downloads as excel', function () {
+        $admin = User::factory()->admin()->create();
+        $category = ExpenseCategory::factory()->create();
+        Expense::factory()->create([
+            'category_id' => $category->id,
+            'user_id' => $admin->id,
+            'tanggal_transaksi' => today(),
+        ]);
+
+        $response = $this->actingAs($admin)->get('/reports/export/excel?period=bulan_ini');
+
+        $response->assertSuccessful()
+            ->assertHeader('Content-Type', 'application/vnd.ms-excel; charset=UTF-8')
+            ->assertSee('<Workbook', false)
+            ->assertSee('Pemasukan per Produk', false)
+            ->assertSee('Pengeluaran per Kategori', false);
+    });
+
+    it('excel filename reflects period', function () {
+        $admin = User::factory()->admin()->create();
+
+        $response = $this->actingAs($admin)->get('/reports/export/excel?period=tahun_ini');
+
+        expect($response->headers->get('Content-Disposition'))
+            ->toStartWith('attachment; filename="laporan-keuangan-')
+            ->toEndWith('.xls"');
     });
 });

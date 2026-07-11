@@ -10,14 +10,36 @@ function nowStr() {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 
-function todayStr() {
-    const d = new Date();
-
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
-
 function pad(n) {
     return String(n).padStart(2, '0');
+}
+
+function csrfToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+}
+
+async function apiFetch(url, options = {}) {
+    const res = await fetch(url, {
+        ...options,
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken(),
+            'Accept': 'application/json',
+            ...(options.headers || {}),
+        },
+    });
+
+    if (res.status === 204 || res.headers.get('content-length') === '0') {
+        return { success: true };
+    }
+
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+        return { success: false, status: res.status, ...data };
+    }
+
+    return { success: true, ...data };
 }
 
 function isEmail(v) {
@@ -35,6 +57,7 @@ const products = (rows, kategoriMap, isAdmin) => ({
     errors: {},
     deleteTarget: null,
     toast: '',
+    saving: false,
 
     get visibleRows() {
         const base = this.isAdmin ? this.rows : this.rows.filter((r) => !r.dihapus_pada);
@@ -68,27 +91,31 @@ const products = (rows, kategoriMap, isAdmin) => ({
         this.modalOpen = true;
     },
 
-    save() {
+    async save() {
         this.errors = {};
-        if (!this.form.nama?.trim()) {
-            this.errors.nama = 'Nama produk wajib diisi.';
-        }
-        if (this.form.harga === '' || Number(this.form.harga) < 0) {
-            this.errors.harga = 'Harga tidak boleh negatif.';
-        }
-        if (this.form.sku && this.rows.some((r) => r.sku === this.form.sku && r.id !== this.editingId)) {
-            this.errors.sku = 'SKU sudah digunakan, gunakan nilai lain.';
-        }
-        if (Object.keys(this.errors).length) {
+        this.saving = true;
+        const url = this.editingId ? `/products/${this.editingId}` : '/products';
+        const method = this.editingId ? 'PUT' : 'POST';
+        const body = JSON.stringify(this.form);
+
+        const res = await apiFetch(url, { method, body });
+        this.saving = false;
+
+        if (!res.success) {
+            if (res.errors) {
+                this.errors = res.errors;
+            } else {
+                this.errors = { nama: res.message || 'Terjadi kesalahan.' };
+            }
             return;
         }
+
         if (this.editingId) {
-            const row = this.rows.find((r) => r.id === this.editingId);
-            Object.assign(row, this.form, { diperbarui_pada: nowStr() });
+            const idx = this.rows.findIndex((r) => r.id === this.editingId);
+            if (idx >= 0) Object.assign(this.rows[idx], res.resource);
             this.toast = 'Produk diperbarui.';
         } else {
-            const id = this.rows.reduce((m, r) => Math.max(m, r.id), 0) + 1;
-            this.rows.unshift({ id, ...this.form, harga: Number(this.form.harga), dibuat_oleh: 1, dibuat_pada: nowStr(), diperbarui_pada: nowStr(), dihapus_pada: null });
+            this.rows.unshift(res.resource);
             this.toast = 'Produk ditambahkan.';
         }
         this.modalOpen = false;
@@ -99,8 +126,13 @@ const products = (rows, kategoriMap, isAdmin) => ({
         this.deleteTarget = row;
     },
 
-    doDelete() {
-        if (!this.deleteTarget) {
+    async doDelete() {
+        if (!this.deleteTarget) return;
+        const res = await apiFetch(`/products/${this.deleteTarget.id}`, { method: 'DELETE' });
+        if (!res.success) {
+            this.toast = res.message || 'Gagal menghapus.';
+            this.deleteTarget = null;
+            this.dismissToast();
             return;
         }
         this.deleteTarget.dihapus_pada = nowStr();
@@ -127,6 +159,7 @@ const income = (rows, produkAktif, produkById, penggunaById, currentUserId) => (
     errors: {},
     deleteTarget: null,
     toast: '',
+    saving: false,
 
     get visibleRows() {
         if (!this.search.trim()) {
@@ -174,46 +207,37 @@ const income = (rows, produkAktif, produkById, penggunaById, currentUserId) => (
         this.modalOpen = true;
     },
 
-    save() {
+    async save() {
         this.errors = {};
-        if (!this.form.tanggal_transaksi) {
-            this.errors.tanggal_transaksi = 'Tanggal transaksi wajib diisi.';
-        }
-        if (!this.form.jumlah || Number(this.form.jumlah) < 1) {
-            this.errors.jumlah = 'Jumlah minimal 1.';
-        }
-        if (Number(this.form.harga_satuan) < 0) {
-            this.errors.harga_satuan = 'Harga satuan tidak boleh negatif.';
-        }
-        if (Object.keys(this.errors).length) {
+        this.saving = true;
+        const url = this.editingId ? `/income/${this.editingId}` : '/income';
+        const method = this.editingId ? 'PUT' : 'POST';
+        const body = JSON.stringify({
+            id_produk: this.form.id_produk || null,
+            tanggal_transaksi: this.form.tanggal_transaksi,
+            jumlah: Number(this.form.jumlah),
+            harga_satuan: Number(this.form.harga_satuan),
+            keterangan: this.form.keterangan,
+        });
+
+        const res = await apiFetch(url, { method, body });
+        this.saving = false;
+
+        if (!res.success) {
+            if (res.errors) {
+                this.errors = res.errors;
+            } else {
+                this.errors = { tanggal_transaksi: res.message || 'Terjadi kesalahan.' };
+            }
             return;
         }
-        const total = this.computedTotal;
+
         if (this.editingId) {
-            const row = this.rows.find((r) => r.id === this.editingId);
-            Object.assign(row, {
-                id_produk: this.form.id_produk ? Number(this.form.id_produk) : null,
-                tanggal_transaksi: this.form.tanggal_transaksi,
-                jumlah: Number(this.form.jumlah),
-                harga_satuan: Number(this.form.harga_satuan),
-                total,
-                keterangan: this.form.keterangan,
-            });
+            const idx = this.rows.findIndex((r) => r.id === this.editingId);
+            if (idx >= 0) Object.assign(this.rows[idx], res.resource);
             this.toast = 'Transaksi pemasukan diperbarui.';
         } else {
-            const id = this.rows.reduce((m, r) => Math.max(m, r.id), 0) + 1;
-            this.rows.unshift({
-                id,
-                id_produk: this.form.id_produk ? Number(this.form.id_produk) : null,
-                tanggal_transaksi: this.form.tanggal_transaksi,
-                dibuat_pada: `${this.form.tanggal_transaksi} ${pad(new Date().getHours())}:${pad(new Date().getMinutes())}:00`,
-                jumlah: Number(this.form.jumlah),
-                harga_satuan: Number(this.form.harga_satuan),
-                total,
-                keterangan: this.form.keterangan,
-                id_pengguna: this.currentUserId,
-                dihapus_pada: null,
-            });
+            this.rows.unshift(res.resource);
             this.toast = 'Transaksi pemasukan ditambahkan.';
         }
         this.modalOpen = false;
@@ -224,8 +248,13 @@ const income = (rows, produkAktif, produkById, penggunaById, currentUserId) => (
         this.deleteTarget = row;
     },
 
-    doDelete() {
-        if (!this.deleteTarget) {
+    async doDelete() {
+        if (!this.deleteTarget) return;
+        const res = await apiFetch(`/income/${this.deleteTarget.id}`, { method: 'DELETE' });
+        if (!res.success) {
+            this.toast = res.message || 'Gagal menghapus.';
+            this.deleteTarget = null;
+            this.dismissToast();
             return;
         }
         this.deleteTarget.dihapus_pada = nowStr();
@@ -251,6 +280,7 @@ const expenses = (rows, kategoriPengeluaran, penggunaById, currentUserId) => ({
     errors: {},
     deleteTarget: null,
     toast: '',
+    saving: false,
 
     get visibleRows() {
         if (!this.search.trim()) {
@@ -287,41 +317,36 @@ const expenses = (rows, kategoriPengeluaran, penggunaById, currentUserId) => ({
         this.modalOpen = true;
     },
 
-    save() {
+    async save() {
         this.errors = {};
-        if (!this.form.id_kategori) {
-            this.errors.id_kategori = 'Kategori wajib dipilih.';
-        }
-        if (!this.form.tanggal_transaksi) {
-            this.errors.tanggal_transaksi = 'Tanggal transaksi wajib diisi.';
-        }
-        if (!this.form.nominal || Number(this.form.nominal) <= 0) {
-            this.errors.nominal = 'Nominal harus lebih besar dari 0.';
-        }
-        if (Object.keys(this.errors).length) {
+        this.saving = true;
+        const url = this.editingId ? `/expenses/${this.editingId}` : '/expenses';
+        const method = this.editingId ? 'PUT' : 'POST';
+        const body = JSON.stringify({
+            id_kategori: this.form.id_kategori,
+            tanggal_transaksi: this.form.tanggal_transaksi,
+            nominal: Number(this.form.nominal),
+            keterangan: this.form.keterangan,
+        });
+
+        const res = await apiFetch(url, { method, body });
+        this.saving = false;
+
+        if (!res.success) {
+            if (res.errors) {
+                this.errors = res.errors;
+            } else {
+                this.errors = { nominal: res.message || 'Terjadi kesalahan.' };
+            }
             return;
         }
+
         if (this.editingId) {
-            const row = this.rows.find((r) => r.id === this.editingId);
-            Object.assign(row, {
-                id_kategori: Number(this.form.id_kategori),
-                tanggal_transaksi: this.form.tanggal_transaksi,
-                nominal: Number(this.form.nominal),
-                keterangan: this.form.keterangan,
-            });
+            const idx = this.rows.findIndex((r) => r.id === this.editingId);
+            if (idx >= 0) Object.assign(this.rows[idx], res.resource);
             this.toast = 'Transaksi pengeluaran diperbarui.';
         } else {
-            const id = this.rows.reduce((m, r) => Math.max(m, r.id), 0) + 1;
-            this.rows.unshift({
-                id,
-                id_kategori: Number(this.form.id_kategori),
-                tanggal_transaksi: this.form.tanggal_transaksi,
-                dibuat_pada: `${this.form.tanggal_transaksi} ${pad(new Date().getHours())}:${pad(new Date().getMinutes())}:00`,
-                nominal: Number(this.form.nominal),
-                keterangan: this.form.keterangan,
-                id_pengguna: this.currentUserId,
-                dihapus_pada: null,
-            });
+            this.rows.unshift(res.resource);
             this.toast = 'Transaksi pengeluaran ditambahkan.';
         }
         this.modalOpen = false;
@@ -332,8 +357,13 @@ const expenses = (rows, kategoriPengeluaran, penggunaById, currentUserId) => ({
         this.deleteTarget = row;
     },
 
-    doDelete() {
-        if (!this.deleteTarget) {
+    async doDelete() {
+        if (!this.deleteTarget) return;
+        const res = await apiFetch(`/expenses/${this.deleteTarget.id}`, { method: 'DELETE' });
+        if (!res.success) {
+            this.toast = res.message || 'Gagal menghapus.';
+            this.deleteTarget = null;
+            this.dismissToast();
             return;
         }
         this.deleteTarget.dihapus_pada = nowStr();
@@ -358,6 +388,7 @@ const users = (rows, currentUser) => ({
     deleteTarget: null,
     toast: '',
     guardMessage: '',
+    saving: false,
 
     get visibleRows() {
         if (!this.search.trim()) {
@@ -396,50 +427,31 @@ const users = (rows, currentUser) => ({
         }
     },
 
-    save() {
+    async save() {
         this.errors = {};
-        if (!this.form.nama?.trim()) {
-            this.errors.nama = 'Nama wajib diisi.';
-        }
-        if (!this.form.nama_pengguna?.trim()) {
-            this.errors.nama_pengguna = 'Nama pengguna wajib diisi.';
-        } else if (this.rows.some((r) => r.nama_pengguna === this.form.nama_pengguna && r.id !== this.editingId)) {
-            this.errors.nama_pengguna = 'Nama pengguna sudah digunakan.';
-        }
-        if (!isEmail(this.form.email || '')) {
-            this.errors.email = 'Format email tidak valid.';
-        } else if (this.rows.some((r) => r.email === this.form.email && r.id !== this.editingId)) {
-            this.errors.email = 'Email sudah digunakan.';
-        }
-        if (!this.editingId && (!this.form.kata_sandi || this.form.kata_sandi.length < 8)) {
-            this.errors.kata_sandi = 'Kata sandi minimal 8 karakter.';
-        }
-        if (Object.keys(this.errors).length) {
+        this.saving = true;
+        const url = this.editingId ? `/users/${this.editingId}` : '/users';
+        const method = this.editingId ? 'PUT' : 'POST';
+        const body = JSON.stringify(this.form);
+
+        const res = await apiFetch(url, { method, body });
+        this.saving = false;
+
+        if (!res.success) {
+            if (res.errors) {
+                this.errors = res.errors;
+            } else {
+                this.errors = { nama: res.message || 'Terjadi kesalahan.' };
+            }
             return;
         }
+
         if (this.editingId) {
-            const row = this.rows.find((r) => r.id === this.editingId);
-            Object.assign(row, {
-                nama: this.form.nama,
-                nama_pengguna: this.form.nama_pengguna,
-                email: this.form.email,
-                peran: this.form.peran,
-                dapat_melihat_dashboard: this.form.peran === 'admin' ? true : !!this.form.dapat_melihat_dashboard,
-                aktif: !!this.form.aktif,
-            });
+            const idx = this.rows.findIndex((r) => r.id === this.editingId);
+            if (idx >= 0) Object.assign(this.rows[idx], res.resource);
             this.toast = 'Data pengguna diperbarui.';
         } else {
-            const id = this.rows.reduce((m, r) => Math.max(m, r.id), 0) + 1;
-            this.rows.unshift({
-                id,
-                nama: this.form.nama,
-                nama_pengguna: this.form.nama_pengguna,
-                email: this.form.email,
-                peran: this.form.peran,
-                dapat_melihat_dashboard: this.form.peran === 'admin' ? true : !!this.form.dapat_melihat_dashboard,
-                aktif: !!this.form.aktif,
-                dihapus_pada: null,
-            });
+            this.rows.unshift(res.resource);
             this.toast = 'Pengguna ditambahkan.';
         }
         this.modalOpen = false;
@@ -462,8 +474,13 @@ const users = (rows, currentUser) => ({
         this.deleteTarget = row;
     },
 
-    doDelete() {
-        if (!this.deleteTarget) {
+    async doDelete() {
+        if (!this.deleteTarget) return;
+        const res = await apiFetch(`/users/${this.deleteTarget.id}`, { method: 'DELETE' });
+        if (!res.success) {
+            this.guardMessage = res.message || 'Gagal menghapus.';
+            this.deleteTarget = null;
+            setTimeout(() => (this.guardMessage = ''), 3000);
             return;
         }
         this.deleteTarget.dihapus_pada = nowStr();
@@ -487,6 +504,12 @@ const reports = () => ({
         setTimeout(() => (this.exportToast = ''), 2800);
     },
 });
+
+function todayStr() {
+    const d = new Date();
+
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
 
 Alpine.data('products', products);
 Alpine.data('income', income);

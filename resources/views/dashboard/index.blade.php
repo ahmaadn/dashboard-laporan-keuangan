@@ -8,7 +8,7 @@
 @endpush
 
 @section('content')
-<div x-data="dashboard(@js($pemasukan), @js($pengeluaran), @js($produk), @js($kategoriProduk), @js($kategoriPengeluaran), @js($pengguna))">
+<div x-data="dashboard(@js($produk), @js($kategoriProduk), @js($kategoriPengeluaran), @js($pengguna))">
 
     {{-- 8.7 Filter Periode --}}
     <div class="ld-filter-bar">
@@ -214,15 +214,15 @@
 
     {{-- Offcanvas: rincian pemasukan (8.1) --}}
     <x-offcanvas-detail id="offIncome" eyebrow="Rincian" title="Transaksi Pemasukan">
-        <template x-if="filteredIncome(range).length === 0">
+        <template x-if="periodIncome().length === 0">
             <x-empty-state icon="○" text="Belum ada transaksi pada periode ini." />
         </template>
-        <template x-if="filteredIncome(range).length > 0">
+        <template x-if="periodIncome().length > 0">
             <x-data-table>
                 <table class="ld-data-table">
                     <thead><tr><th>Tanggal</th><th>Produk</th><th class="text-end">Jml</th><th class="text-end">Harga</th><th class="text-end">Total</th><th>Pencatat</th></tr></thead>
                     <tbody>
-                        <template x-for="r in filteredIncome(range)" :key="r.id">
+                        <template x-for="r in periodIncome()" :key="r.id">
                             <tr>
                                 <td x-text="r.tanggal_transaksi.split('-').reverse().join('/')"></td>
                                 <td x-text="produkMap[r.id_produk]?.nama || '—'"></td>
@@ -240,15 +240,15 @@
 
     {{-- Offcanvas: rincian pengeluaran (8.1) --}}
     <x-offcanvas-detail id="offExpense" eyebrow="Rincian" title="Transaksi Pengeluaran">
-        <template x-if="filteredExpense(range).length === 0">
+        <template x-if="periodExpense().length === 0">
             <x-empty-state icon="○" text="Belum ada transaksi pada periode ini." />
         </template>
-        <template x-if="filteredExpense(range).length > 0">
+        <template x-if="periodExpense().length > 0">
             <x-data-table>
                 <table class="ld-data-table">
                     <thead><tr><th>Tanggal</th><th>Kategori</th><th class="text-end">Nominal</th><th>Keterangan</th><th>Pencatat</th></tr></thead>
                     <tbody>
-                        <template x-for="r in filteredExpense(range)" :key="r.id">
+                        <template x-for="r in periodExpense()" :key="r.id">
                             <tr>
                                 <td x-text="r.tanggal_transaksi.split('-').reverse().join('/')"></td>
                                 <td x-text="kategoriPengeluaranMap[r.id_kategori]?.nama || '—'"></td>

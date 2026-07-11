@@ -2,29 +2,24 @@
 
 namespace App\Services\Reports;
 
-use App\Services\Mock\MockData;
+use App\Services\ReportService;
 
 /**
  * Builds export payloads (PDF view data + Excel spreadsheet markup) for the
- * financial report page. Both exports reuse {@see MockData::reportSummary()}
+ * financial report page. Both exports reuse {@see ReportService::summary()}
  * so they stay consistent with the on-screen report.
  */
 final class ExportRenderer
 {
-    /**
-     * Resolve the report summary for the current request parameters.
-     *
-     * @return array<string, mixed>
-     */
+    public function __construct(private readonly ReportService $reportService) {}
+
+    /** @return array<string, mixed> */
     public function report(string $period, ?string $start, ?string $end): array
     {
-        return MockData::reportSummary($period, $start, $end);
+        return $this->reportService->summary($period, $start, $end);
     }
 
-    /**
-     * Build an Excel-compatible SpreadsheetML 2003 document (.xls) without
-     * requiring phpspreadsheet. Opens cleanly in Excel, LibreOffice & Numbers.
-     */
+    /** Build an Excel-compatible SpreadsheetML 2003 document (.xls). */
     public function excel(array $report): string
     {
         $cells = [];

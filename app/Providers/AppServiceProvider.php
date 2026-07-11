@@ -2,7 +2,8 @@
 
 namespace App\Providers;
 
-use App\Services\Mock\MockData;
+use App\Http\Resources\UserResource;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -10,27 +11,22 @@ use Illuminate\View\View as IlluminateView;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
     public function register(): void
     {
         //
     }
 
-    /**
-     * Bootstrap any application services.
-     */
     public function boot(): void
     {
-        Blade::directive('rupiah', fn ($expression) => "<?php echo \\App\\Services\\Mock\\MockData::rupiah({$expression}); ?>");
-        Blade::directive('tanggal', fn ($expression) => "<?php echo \\App\\Services\\Mock\\MockData::tanggal({$expression}); ?>");
-        Blade::directive('tanggalLengkap', fn ($expression) => "<?php echo \\App\\Services\\Mock\\MockData::tanggalLengkap({$expression}); ?>");
+        Blade::directive('rupiah', fn ($expression) => "<?php echo \\App\\Support\\Format::rupiah({$expression}); ?>");
+        Blade::directive('tanggal', fn ($expression) => "<?php echo \\App\\Support\\Format::tanggal({$expression}); ?>");
+        Blade::directive('tanggalLengkap', fn ($expression) => "<?php echo \\App\\Support\\Format::tanggalLengkap({$expression}); ?>");
 
         View::composer('layouts.app', function (IlluminateView $view) {
-            $currentUser = MockData::currentUser(request());
-            $isAdmin = $currentUser['peran'] === 'admin';
-            $canSeeDashboard = $isAdmin || $currentUser['dapat_melihat_dashboard'];
+            $user = Auth::user();
+            $currentUser = $user ? UserResource::make($user)->resolve() : null;
+            $isAdmin = $user?->isAdmin() ?? false;
+            $canSeeDashboard = $user?->canSeeDashboard() ?? false;
 
             $menus = array_filter([
                 ['label' => 'Dashboard', 'url' => '/dashboard', 'icon' => 'dashboard', 'show' => $canSeeDashboard],
@@ -43,7 +39,6 @@ class AppServiceProvider extends ServiceProvider
 
             $view
                 ->with('currentUser', $currentUser)
-                ->with('profiles', MockData::profiles())
                 ->with('menus', array_values($menus));
         });
     }

@@ -15,49 +15,12 @@ function dateStr(d) {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-function parseDate(s) {
-    if (!s) return null;
-    const [y, m, d] = s.split('-').map(Number);
-
-    return new Date(y, m - 1, d);
-}
-
-function startOfDay(d) {
-    const x = new Date(d);
-    x.setHours(0, 0, 0, 0);
-
-    return x;
-}
-
-function endOfDay(d) {
-    const x = new Date(d);
-    x.setHours(23, 59, 59, 999);
-
-    return x;
-}
-
-function startOfWeek(d) {
-    const x = startOfDay(d);
-    const day = (x.getDay() + 6) % 7; // Monday = 0
-    x.setDate(x.getDate() - day);
-
-    return x;
-}
-
 function startOfMonth(d) {
     return new Date(d.getFullYear(), d.getMonth(), 1);
 }
 
 function endOfMonth(d) {
     return new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
-}
-
-function startOfYear(d) {
-    return new Date(d.getFullYear(), 0, 1);
-}
-
-function endOfYear(d) {
-    return new Date(d.getFullYear(), 11, 31, 23, 59, 59, 999);
 }
 
 function addMonths(d, n) {
@@ -68,26 +31,16 @@ function rupiah(n) {
     return 'Rp ' + Number(n || 0).toLocaleString('id-ID');
 }
 
-function dayLabel(d) {
-    return `${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`;
-}
-
-function monthLabel(d, spanYears) {
-    return spanYears ? `${MONTHS_SHORT[d.getMonth()]} ${d.getFullYear()}` : MONTHS_SHORT[d.getMonth()];
-}
-
-const dashboard = (pemasukan, pengeluaran, produk, kategoriProduk, kategoriPengeluaran, pengguna) => {
-    // Chart.js instances must live outside Alpine reactivity to avoid
-    // "Maximum call stack size exceeded" from Chart internal circular refs.
+const dashboard = (produk, kategoriProduk, kategoriPengeluaran, pengguna) => {
     const _charts = { trend: null, category: null, product: null };
 
     return {
-    pemasukan,
-    pengeluaran,
     produkMap: {},
     kategoriProdukMap: {},
     kategoriPengeluaranMap: {},
     penggunaMap: {},
+
+    serverData: null,
 
     period: 'bulan_ini',
     rangeStart: '',
@@ -97,6 +50,7 @@ const dashboard = (pemasukan, pengeluaran, produk, kategoriProduk, kategoriPenge
     cmpB: 'bulan_ini',
     cmpCustomA: { start: '', end: '' },
     cmpCustomB: { start: '', end: '' },
+    cmpData: null,
 
     detail: { title: '', eyebrow: '', columns: [], rows: [], emptyText: 'Belum ada transaksi pada periode ini.' },
     offcanvasInst: null,
@@ -118,27 +72,58 @@ const dashboard = (pemasukan, pengeluaran, produk, kategoriProduk, kategoriPenge
         this.cmpCustomA = { start: dateStr(startOfMonth(addMonths(today, -1))), end: dateStr(endOfMonth(addMonths(today, -1))) };
         this.cmpCustomB = { start: dateStr(startOfMonth(today)), end: dateStr(today) };
 
-        this.$nextTick(() => {
-            this.initCharts();
-            this.renderCharts();
-        });
+        this.fetchData();
+        this.fetchCompare();
 
-        this.$watch('period', () => {
-            this.syncCustomRange();
-            this.renderCharts();
-        });
-        this.$watch('rangeStart', () => this.renderCharts());
-        this.$watch('rangeEnd', () => this.renderCharts());
+        this.$watch('period', () => { this.syncCustomRange(); this.fetchData(); });
+        this.$watch('rangeStart', () => { if (this.period === 'rentang') this.fetchData(); });
+        this.$watch('rangeEnd', () => { if (this.period === 'rentang') this.fetchData(); });
+        this.$watch('cmpA', () => this.fetchCompare());
+        this.$watch('cmpB', () => this.fetchCompare());
+        this.$watch('cmpCustomA', () => { if (this.cmpA === 'rentang') this.fetchCompare(); }, { deep: true });
+        this.$watch('cmpCustomB', () => { if (this.cmpB === 'rentang') this.fetchCompare(); }, { deep: true });
     },
 
-    get periodLabel() {
-        return {
-            hari_ini: 'Hari Ini',
-            minggu_ini: 'Minggu Ini',
-            bulan_ini: 'Bulan Ini',
-            tahun_ini: 'Tahun Ini',
-            rentang: 'Rentang Kustom',
-        }[this.period] ?? 'Bulan Ini';
+    async fetchData() {
+        const params = new URLSearchParams();
+        params.set('period', this.period);
+        if (this.period === 'rentang') {
+            params.set('start', this.rangeStart);
+            params.set('end', this.rangeEnd);
+        }
+        try {
+            const res = await fetch(`/api/dashboard?${params}`);
+            this.serverData = await res.json();
+        } catch (e) {
+            this.serverData = null;
+        }
+
+        this.$nextTick(() => {
+            if (!_charts.trend) {
+                this.initCharts();
+            }
+            this.renderCharts();
+        });
+    },
+
+    async fetchCompare() {
+        const params = new URLSearchParams();
+        params.set('a', this.cmpA);
+        params.set('b', this.cmpB);
+        if (this.cmpA === 'rentang') {
+            params.set('a_start', this.cmpCustomA.start);
+            params.set('a_end', this.cmpCustomA.end);
+        }
+        if (this.cmpB === 'rentang') {
+            params.set('b_start', this.cmpCustomB.start);
+            params.set('b_end', this.cmpCustomB.end);
+        }
+        try {
+            const res = await fetch(`/api/dashboard/compare?${params}`);
+            this.cmpData = await res.json();
+        } catch (e) {
+            this.cmpData = null;
+        }
     },
 
     syncCustomRange() {
@@ -149,192 +134,44 @@ const dashboard = (pemasukan, pengeluaran, produk, kategoriProduk, kategoriPenge
         }
     },
 
-    computeRange(presetKey, customStart, customEnd) {
-        const today = new Date();
-        switch (presetKey) {
-            case 'hari_ini':
-                return { start: startOfDay(today), end: endOfDay(today), granularity: 'hour' };
-            case 'minggu_ini':
-                return { start: startOfWeek(today), end: endOfDay(addDays(startOfWeek(today), 6)), granularity: 'day' };
-            case 'bulan_ini':
-                return { start: startOfMonth(today), end: endOfMonth(today), granularity: 'day' };
-            case 'tahun_ini':
-                return { start: startOfYear(today), end: endOfYear(today), granularity: 'month' };
-            case 'bulan_lalu': {
-                const m = addMonths(today, -1);
-
-                return { start: startOfMonth(m), end: endOfMonth(m), granularity: 'day' };
-            }
-            case 'tahun_lalu': {
-                const y = new Date(today.getFullYear() - 1, 0, 1);
-
-                return { start: startOfYear(y), end: endOfYear(y), granularity: 'month' };
-            }
-            case 'rentang': {
-                const s = parseDate(customStart) ?? startOfMonth(today);
-                const e = parseDate(customEnd) ?? today;
-                const days = Math.round((endOfDay(e) - startOfDay(s)) / 86400000);
-
-                return { start: startOfDay(s), end: endOfDay(e), granularity: days > 31 ? 'month' : 'day' };
-            }
-            default:
-                return { start: startOfMonth(today), end: endOfMonth(today), granularity: 'day' };
-        }
-    },
-
-    get range() {
-        return this.computeRange(this.period, this.rangeStart, this.rangeEnd);
-    },
-
-    inRange(rowDate, range) {
-        const s = dateStr(range.start);
-        const e = dateStr(range.end);
-
-        return rowDate >= s && rowDate <= e;
-    },
-
-    filteredIncome(range) {
-        return this.pemasukan.filter((r) => r.dihapus_pada === null && this.inRange(r.tanggal_transaksi, range));
-    },
-
-    filteredExpense(range) {
-        return this.pengeluaran.filter((r) => r.dihapus_pada === null && this.inRange(r.tanggal_transaksi, range));
+    get periodLabel() {
+        return this.serverData?.range?.label ?? 'Bulan Ini';
     },
 
     get summary() {
-        const range = this.range;
-        const income = this.filteredIncome(range).reduce((s, r) => s + Number(r.total), 0);
-        const expense = this.filteredExpense(range).reduce((s, r) => s + Number(r.nominal), 0);
-
-        return { income, expense, profit: income - expense, hasData: income > 0 || expense > 0 };
-    },
-
-    buildBuckets(range) {
-        const buckets = [];
-        const spanYears = range.start.getFullYear() !== range.end.getFullYear();
-
-        if (range.granularity === 'hour') {
-            for (let h = 0; h < 24; h++) {
-                buckets.push({ key: `h${h}`, label: `${pad(h)}.00`, hour: h });
-            }
-        } else if (range.granularity === 'day') {
-            const cur = startOfDay(range.start);
-            while (cur <= range.end) {
-                buckets.push({ key: dateStr(cur), label: dayLabel(cur) });
-                cur.setDate(cur.getDate() + 1);
-            }
-        } else {
-            const cur = new Date(range.start.getFullYear(), range.start.getMonth(), 1);
-            const end = new Date(range.end.getFullYear(), range.end.getMonth(), 1);
-            while (cur <= end) {
-                buckets.push({ key: `${cur.getFullYear()}-${pad(cur.getMonth() + 1)}`, label: monthLabel(cur, spanYears) });
-                cur.setMonth(cur.getMonth() + 1);
-            }
-        }
-
-        return buckets;
-    },
-
-    bucketKeyOf(row, granularity) {
-        if (granularity === 'hour') {
-            return `h${new Date(row.dibuat_pada).getHours()}`;
-        }
-        if (granularity === 'month') {
-            return row.tanggal_transaksi.slice(0, 7);
-        }
-
-        return row.tanggal_transaksi;
-    },
-
-    get trendSeries() {
-        const range = this.range;
-        const buckets = this.buildBuckets(range);
-        const income = this.filteredIncome(range);
-        const expense = this.filteredExpense(range);
-        const incData = buckets.map((b) => income.filter((r) => this.bucketKeyOf(r, range.granularity) === b.key).reduce((s, r) => s + Number(r.total), 0));
-        const expData = buckets.map((b) => expense.filter((r) => this.bucketKeyOf(r, range.granularity) === b.key).reduce((s, r) => s + Number(r.nominal), 0));
-
-        return { labels: buckets.map((b) => b.label), buckets, income: incData, expense: expData, granularity: range.granularity };
+        return this.serverData?.summary ?? { income: 0, expense: 0, profit: 0, hasData: false };
     },
 
     get categoryBreakdown() {
-        const range = this.range;
-        const expense = this.filteredExpense(range);
-        const byCat = {};
-        for (const r of expense) {
-            byCat[r.id_kategori] = (byCat[r.id_kategori] ?? 0) + Number(r.nominal);
-        }
-
-        return Object.entries(byCat).map(([id, value]) => ({
-            id: Number(id),
-            label: this.kategoriPengeluaranMap[id]?.nama ?? 'Lainnya',
-            value,
-        })).sort((a, b) => b.value - a.value);
-    },
-
-    get productAggregates() {
-        const range = this.range;
-        const income = this.filteredIncome(range);
-        const byProduct = {};
-        for (const r of income) {
-            if (!r.id_produk) {
-                continue;
-            }
-            const agg = byProduct[r.id_produk] ?? { id: r.id_produk, nama: this.produkMap[r.id_produk]?.nama ?? 'Tanpa produk', qty: 0, total: 0 };
-            agg.qty += Number(r.jumlah);
-            agg.total += Number(r.total);
-            byProduct[r.id_produk] = agg;
-        }
-
-        return Object.values(byProduct).sort((a, b) => b.qty - a.qty);
+        return this.serverData?.categoryBreakdown ?? [];
     },
 
     get topProducts() {
-        return this.productAggregates.slice(0, 5);
+        return this.serverData?.topProducts ?? [];
     },
 
     get productTrendSeries() {
-        const range = this.range;
-        const buckets = this.buildBuckets(range);
-        const labels = buckets.map((b) => b.label);
-        const top = this.productAggregates.slice(0, 5);
-        const income = this.filteredIncome(range);
-        const datasets = top.map((p, i) => ({
-            label: p.nama,
-            productId: p.id,
-            data: buckets.map((b) => income.filter((r) => r.id_produk === p.id && this.bucketKeyOf(r, range.granularity) === b.key).reduce((s, r) => s + Number(r.total), 0)),
-            borderColor: PRODUCT_COLORS[i % PRODUCT_COLORS.length],
-            backgroundColor: PRODUCT_COLORS[i % PRODUCT_COLORS.length],
-            tension: 0.3,
-            fill: false,
-        }));
-
-        return { labels, datasets };
+        return this.serverData?.productTrend ?? { labels: [], datasets: [] };
     },
 
     get recentTransactions() {
-        const all = [
-            ...this.pemasukan.map((r) => ({ ...r, type: 'pemasukan', amount: Number(r.total), date: r.dibuat_pada })),
-            ...this.pengeluaran.map((r) => ({ ...r, type: 'pengeluaran', amount: Number(r.nominal), date: r.dibuat_pada })),
-        ].filter((r) => r.dihapus_pada === null);
+        return this.serverData?.recentTransactions ?? [];
+    },
 
-        return all.sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 10);
+    periodIncome() {
+        return this.serverData?.income ?? [];
+    },
+
+    periodExpense() {
+        return this.serverData?.expense ?? [];
     },
 
     get cmpSummaryA() {
-        return this.cmpSummary(this.cmpA, this.cmpCustomA);
+        return this.cmpData?.a ?? { income: 0, expense: 0, profit: 0 };
     },
 
     get cmpSummaryB() {
-        return this.cmpSummary(this.cmpB, this.cmpCustomB);
-    },
-
-    cmpSummary(preset, custom) {
-        const range = this.computeRange(preset, custom.start, custom.end);
-        const income = this.filteredIncome(range).reduce((s, r) => s + Number(r.total), 0);
-        const expense = this.filteredExpense(range).reduce((s, r) => s + Number(r.nominal), 0);
-
-        return { income, expense, profit: income - expense };
+        return this.cmpData?.b ?? { income: 0, expense: 0, profit: 0 };
     },
 
     cmpDelta(field) {
@@ -358,11 +195,6 @@ const dashboard = (pemasukan, pengeluaran, produk, kategoriProduk, kategoriPenge
         return ((b - a) / a) >= 0 ? 'delta-up' : 'delta-down';
     },
 
-    cmpPresetLabel(preset) {
-        return { hari_ini: 'Hari Ini', minggu_ini: 'Minggu Ini', bulan_ini: 'Bulan Ini', tahun_ini: 'Tahun Ini', bulan_lalu: 'Bulan Lalu', tahun_lalu: 'Tahun Lalu', rentang: 'Rentang Kustom' }[preset] ?? preset;
-    },
-
-    // --- Chart initialization ---
     initCharts() {
         const baseOptions = {
             responsive: true,
@@ -424,8 +256,8 @@ const dashboard = (pemasukan, pengeluaran, produk, kategoriProduk, kategoriPenge
     },
 
     renderCharts() {
-        if (_charts.trend) {
-            const trend = this.trendSeries;
+        if (_charts.trend && this.serverData) {
+            const trend = this.serverData.trend;
             _charts.trend.data.labels = trend.labels;
             _charts.trend.data.datasets[0].data = trend.income;
             _charts.trend.data.datasets[1].data = trend.expense;
@@ -442,20 +274,37 @@ const dashboard = (pemasukan, pengeluaran, produk, kategoriProduk, kategoriPenge
         if (_charts.product) {
             const pt = this.productTrendSeries;
             _charts.product.data.labels = pt.labels;
-            _charts.product.data.datasets = pt.datasets;
+            _charts.product.data.datasets = pt.datasets.map((d, i) => ({
+                ...d,
+                borderColor: PRODUCT_COLORS[i % PRODUCT_COLORS.length],
+                backgroundColor: PRODUCT_COLORS[i % PRODUCT_COLORS.length],
+                tension: 0.3,
+                fill: false,
+            }));
             _charts.product.update();
         }
     },
 
+    bucketKeyOf(row, granularity) {
+        if (granularity === 'hour') {
+            return `h${new Date(row.dibuat_pada).getHours()}`;
+        }
+        if (granularity === 'month') {
+            return row.tanggal_transaksi.slice(0, 7);
+        }
+
+        return row.tanggal_transaksi;
+    },
+
     onTrendClick(evt, elements) {
-        if (!elements.length) {
+        if (!elements.length || !this.serverData) {
             return;
         }
         const { index } = elements[0];
-        const trend = this.trendSeries;
+        const trend = this.serverData.trend;
         const bucket = trend.buckets[index];
-        const range = this.range;
-        const rows = this.filteredIncome(range).concat(this.filteredExpense(range)).filter((r) => this.bucketKeyOf(r, range.granularity) === bucket.key);
+        const granularity = trend.granularity;
+        const rows = [...this.periodIncome(), ...this.periodExpense()].filter((r) => this.bucketKeyOf(r, granularity) === bucket.key);
         const items = rows.map((r) => this.transactionRow(r));
         this.showDetail(`Tren · ${bucket.label}`, this.periodLabel, ['Tanggal', 'Jenis', ' Produk/Kategori', 'Jumlah', 'Pencatat'], items, 'Belum ada transaksi pada titik ini.');
     },
@@ -470,22 +319,20 @@ const dashboard = (pemasukan, pengeluaran, produk, kategoriProduk, kategoriPenge
         if (!cat) {
             return;
         }
-        const range = this.range;
-        const rows = this.filteredExpense(range).filter((r) => r.id_kategori === cat.id);
+        const rows = this.periodExpense().filter((r) => r.id_kategori === cat.id);
         const items = rows.map((r) => this.expenseRow(r));
         this.showDetail(`Pengeluaran · ${cat.label}`, this.periodLabel, ['Tanggal', 'Nominal', 'Keterangan', 'Pencatat'], items, 'Belum ada data pengeluaran untuk kategori ini.');
     },
 
     showProductDetail(productId) {
         const product = this.produkMap[productId];
-        const range = this.range;
-        const rows = this.filteredIncome(range).filter((r) => r.id_produk === productId);
+        const rows = this.periodIncome().filter((r) => r.id_produk === productId);
         const items = rows.map((r) => this.incomeRow(r));
         this.showDetail(`Penjualan · ${product?.nama ?? 'Produk'}`, this.periodLabel, ['Tanggal', 'Jumlah', 'Harga Satuan', 'Total', 'Pencatat'], items, 'Belum ada penjualan produk ini pada periode ini.');
     },
 
     transactionRow(r) {
-        return r.type === 'pemasukan' ? this.incomeRow(r) : this.expenseRow(r);
+        return r.type === 'pemasukan' || r.id_produk !== undefined ? this.incomeRow(r) : this.expenseRow(r);
     },
 
     incomeRow(r) {
@@ -557,13 +404,6 @@ const dashboard = (pemasukan, pengeluaran, produk, kategoriProduk, kategoriPenge
     },
     };
 };
-
-function addDays(d, n) {
-    const x = new Date(d);
-    x.setDate(x.getDate() + n);
-
-    return x;
-}
 
 Alpine.data('dashboard', dashboard);
 

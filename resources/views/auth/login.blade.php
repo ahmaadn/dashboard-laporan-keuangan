@@ -18,7 +18,7 @@
                 <p class="ld-auth-subtitle mt-4">Pencatatan pemasukan dan pengeluaran yang terstruktur, dashboard interaktif, dan laporan periode — semua dalam satu tempat.</p>
             </div>
 
-            <p class="ld-auth-eyebrow m-0">Demo mock · tanpa database</p>
+            <p class="ld-auth-eyebrow m-0">Akun demo tersedia di bawah</p>
         </section>
 
         {{-- Login form panel --}}
@@ -27,21 +27,21 @@
                 <h2 class="ld-auth-card__title">Masuk ke akun</h2>
                 <p class="ld-auth-eyebrow mt-1 mb-4">Gunakan akun demo atau pilih peran di bawah</p>
 
-                <form @submit.prevent="submit()">
-                    @if (session('error'))
-                        <div class="ld-auth-error mb-3">{{ session('error') }}</div>
+                <form method="POST" action="/login">
+                    @csrf
+                    @if ($errors->any())
+                        <div class="ld-auth-error mb-3">{{ $errors->first() }}</div>
                     @endif
-                    <p x-show="error" x-cloak class="ld-auth-error mb-3" x-text="error"></p>
 
                     <div class="mb-3">
                         <label class="ld-auth-label" for="namaPengguna">Nama Pengguna / Email</label>
-                        <input id="namaPengguna" type="text" class="ld-auth-input" x-model="namaPengguna" placeholder="mis. busari" autocomplete="username">
+                        <input id="namaPengguna" type="text" name="login" class="ld-auth-input" x-model="namaPengguna" placeholder="mis. busari" autocomplete="username" value="{{ old('login') }}">
                     </div>
 
                     <div class="mb-4">
                         <label class="ld-auth-label" for="kataSandi">Kata Sandi</label>
                         <div class="position-relative">
-                            <input id="kataSandi" :type="showPassword ? 'text' : 'password'" class="ld-auth-input pe-5" x-model="kataSandi" placeholder="••••••••" autocomplete="current-password">
+                            <input id="kataSandi" name="password" :type="showPassword ? 'text' : 'password'" class="ld-auth-input pe-5" x-model="kataSandi" placeholder="••••••••" autocomplete="current-password">
                             <button type="button" @click="showPassword = !showPassword" class="ld-auth-toggle" :aria-label="showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'">
                                 <span x-text="showPassword ? 'Sembunyikan' : 'Lihat'"></span>
                             </button>
@@ -53,7 +53,7 @@
 
                 <hr class="ld-auth-divider">
 
-                <span class="ld-auth-eyebrow d-block mb-3">Masuk cepat sebagai</span>
+                <span class="ld-auth-eyebrow d-block mb-3">Isi otomatis sebagai</span>
                 <div class="d-flex flex-column gap-2">
                     @foreach ($profiles as $profile)
                         <button type="button" class="ld-auth-quickfill" @click="quickFill(@js($profile))">

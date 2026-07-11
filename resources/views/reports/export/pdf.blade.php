@@ -37,15 +37,15 @@
         <tr>
             <td>
                 <div class="label">Total Pemasukan</div>
-                <div class="value">{{ \App\Services\Mock\MockData::rupiah($report['totalIncome']) }}</div>
+                <div class="value">{{ \App\Support\Format::rupiah($report['totalIncome']) }}</div>
             </td>
             <td>
                 <div class="label">Total Pengeluaran</div>
-                <div class="value">{{ \App\Services\Mock\MockData::rupiah($report['totalExpense']) }}</div>
+                <div class="value">{{ \App\Support\Format::rupiah($report['totalExpense']) }}</div>
             </td>
             <td>
                 <div class="label">Laba / Rugi</div>
-                <div class="value {{ $report['profit'] >= 0 ? 'profit' : 'loss' }}">{{ \App\Services\Mock\MockData::rupiah($report['profit']) }}</div>
+                <div class="value {{ $report['profit'] >= 0 ? 'profit' : 'loss' }}">{{ \App\Support\Format::rupiah($report['profit']) }}</div>
             </td>
         </tr>
     </table>
@@ -68,7 +68,7 @@
                             <td class="fw-medium">{{ $row['nama'] }}</td>
                             <td class="num">{{ $row['qty'] }}</td>
                             <td class="num">{{ $row['count'] }}</td>
-                            <td class="num fw-medium">{{ \App\Services\Mock\MockData::rupiah($row['total']) }}</td>
+                            <td class="num fw-medium">{{ \App\Support\Format::rupiah($row['total']) }}</td>
                         </tr>
                     @endforeach
                 </tbody>
@@ -92,7 +92,7 @@
                         <tr>
                             <td class="fw-medium">{{ $row['nama'] }}</td>
                             <td class="num">{{ $row['count'] }}</td>
-                            <td class="num fw-medium">{{ \App\Services\Mock\MockData::rupiah($row['total']) }}</td>
+                            <td class="num fw-medium">{{ \App\Support\Format::rupiah($row['total']) }}</td>
                         </tr>
                     @endforeach
                 </tbody>

@@ -15,7 +15,7 @@ use Tests\TestCase;
 */
 
 pest()->extend(TestCase::class)
- // ->use(RefreshDatabase::class)
+    ->use(RefreshDatabase::class)
     ->in('Feature');
 
 /*
@@ -47,4 +47,13 @@ expect()->extend('toBeOne', function () {
 function something()
 {
     // ..
+}
+
+function assertValidationErrors($response, array $fields): void
+{
+    $response->assertStatus(422);
+    $errors = $response->json('errors', []);
+    foreach ($fields as $field) {
+        expect($errors)->toHaveKey($field);
+    }
 }
