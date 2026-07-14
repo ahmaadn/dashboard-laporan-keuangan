@@ -4,7 +4,7 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
-        <title>{{ config('app.name', 'LeatherDash') }}</title>
+        <title>{{ config('app.name', 'BM Leather') }}</title>
 
         <!-- Styles / Scripts -->
         @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
@@ -17,7 +17,7 @@
                 <div class="col-md-8 col-lg-6">
                     <div class="card shadow-sm border-0">
                         <div class="card-body p-4 p-md-5 text-center">
-                            <h1 class="h3 mb-2 fw-semibold">{{ config('app.name', 'LeatherDash') }}</h1>
+                            <h1 class="h3 mb-2 fw-semibold">{{ config('app.name', 'BM Leather') }}</h1>
                             <p class="text-muted mb-4">Aplikasi pengelolaan keuangan UMKM kerajinan kulit dengan dashboard interaktif.</p>
 
                             <div class="d-grid gap-2 d-sm-flex justify-content-center">

@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
-    <title>Laporan Keuangan — {{ config('app.name', 'LeatherDash') }}</title>
+    <title>Laporan Keuangan — {{ config('app.name', 'BM Leather') }}</title>
     <style>
         body { font-family: 'DejaVu Sans', sans-serif; color: #1f2937; font-size: 12px; margin: 32px; }
         .ld-print__head { margin-bottom: 18px; }
@@ -28,7 +28,7 @@
 </head>
 <body>
     <div class="ld-print__head">
-        <div class="ld-print__brand">{{ config('app.name', 'LeatherDash') }}</div>
+        <div class="ld-print__brand">{{ config('app.name', 'BM Leather') }}</div>
         <div class="ld-print__title">Laporan Keuangan</div>
         <div class="ld-print__meta">Periode: {{ $report['rangeLabel'] }}</div>
     </div>
@@ -107,7 +107,7 @@
     @endif
 
     <div class="ld-print__foot">
-        Dicetak dari LeatherDash — {{ now()->format('d/m/Y H:i') }}
+        Dicetak dari {{ config('app.name', 'BM Leather') }} — {{ now()->format('d/m/Y H:i') }}
     </div>
 </body>
 </html>

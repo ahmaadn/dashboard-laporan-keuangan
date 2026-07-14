@@ -8,8 +8,8 @@
 @endphp
 
 <a class="ld-sidebar__brand ld-brand-mark" href="{{ !empty($currentUser) && $currentUser['dapat_melihat_dashboard'] ? '/dashboard' : '/income' }}">
-    <span class="ld-brand-dot"></span>
-    <span class="ld-brand-wordmark">LeatherDash</span>
+    <img src="{{ asset('logo-t.png') }}" alt="{{ config('app.name', 'BM Leather') }}" class="ld-brand-logo" width="36" height="36">
+    <span class="ld-brand-wordmark">{{ config('app.name', 'BM Leather') }}</span>
 </a>
 
 <nav class="ld-sidebar__nav" aria-label="Navigasi utama">

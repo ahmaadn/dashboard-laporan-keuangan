@@ -337,8 +337,10 @@
 .ld-page-header__title { font-size: 1.75rem; font-weight: 425; color: var(--ld-ink); letter-spacing: -0.28px; margin: 0; }
 .ld-page-header__actions { display: flex; gap: var(--ld-space-xs); flex-wrap: wrap; }
 
-/* --- Brand mark (dot + wordmark) --- */
+/* --- Brand mark (logo + wordmark) --- */
 .ld-brand-mark { display: inline-flex; align-items: center; gap: var(--ld-space-xs); text-decoration: none; }
+.ld-brand-logo { width: 36px; height: 36px; object-fit: contain; flex-shrink: 0; border-radius: var(--ld-r-full); }
+.ld-brand-logo--lg { width: 44px; height: 44px; }
 .ld-brand-dot { width: 12px; height: 12px; border-radius: var(--ld-r-full); background-color: var(--ld-brand); flex-shrink: 0; }
 .ld-brand-wordmark { font-size: 1.0625rem; font-weight: 600; letter-spacing: -0.21px; color: var(--ld-ink); }
 

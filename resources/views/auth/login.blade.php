@@ -8,8 +8,8 @@
         {{-- Marketing hero --}}
         <section class="ld-auth-hero">
             <div class="ld-auth-hero__top">
-                <span class="ld-brand-dot"></span>
-                <span class="ld-auth-wordmark">LeatherDash</span>
+                <img src="{{ asset('logo-t.png') }}" alt="{{ config('app.name', 'BM Leather') }}" class="ld-brand-logo ld-brand-logo--lg" width="44" height="44">
+                <span class="ld-auth-wordmark">{{ config('app.name', 'BM Leather') }}</span>
             </div>
 
             <div>
