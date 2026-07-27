@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\HppAdjustment;
 use App\Services\PeriodResolver;
 use App\Services\ReportService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ReportController extends Controller
@@ -22,5 +24,42 @@ class ReportController extends Controller
             'report' => $report,
             'periodOptions' => PeriodResolver::OPTIONS,
         ]);
+    }
+
+    public function storeHppAdjustment(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'tanggal' => ['required', 'date', 'before_or_equal:today'],
+            'nominal' => ['required', 'numeric'],
+            'keterangan' => ['nullable', 'string', 'max:255'],
+        ], [
+            'tanggal.required' => 'Tanggal wajib diisi.',
+            'tanggal.before_or_equal' => 'Tanggal tidak boleh melebihi hari ini.',
+            'nominal.required' => 'Nominal wajib diisi.',
+        ]);
+
+        $adj = HppAdjustment::create([
+            'user_id' => $request->user()->id,
+            'tanggal' => $validated['tanggal'],
+            'nominal' => $validated['nominal'],
+            'keterangan' => $validated['keterangan'] ?? null,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'adjustment' => [
+                'id' => $adj->id,
+                'tanggal' => $adj->tanggal?->format('Y-m-d'),
+                'nominal' => (int) $adj->nominal,
+                'keterangan' => $adj->keterangan,
+            ],
+        ], 201);
+    }
+
+    public function destroyHppAdjustment(HppAdjustment $hppAdjustment): JsonResponse
+    {
+        $hppAdjustment->delete();
+
+        return response()->json(['success' => true]);
     }
 }

@@ -28,6 +28,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/products', [ProductController::class, 'store'])->middleware('role:admin');
     Route::match(['put', 'patch'], '/products/{product}', [ProductController::class, 'update'])->middleware('role:admin');
     Route::delete('/products/{product}', [ProductController::class, 'destroy'])->middleware('role:admin');
+    Route::post('/products/{product}/stock', [ProductController::class, 'adjustStock'])->middleware('role:admin');
+    Route::get('/products/{product}/movements', [ProductController::class, 'movements']);
 
     Route::get('/income', [IncomeController::class, 'index']);
     Route::post('/income', [IncomeController::class, 'store']);
@@ -45,6 +47,8 @@ Route::middleware('auth')->group(function () {
     Route::delete('/users/{user}', [UserController::class, 'destroy'])->middleware('role:admin');
 
     Route::get('/reports', [ReportController::class, 'index'])->middleware('role:admin');
+    Route::post('/reports/hpp-adjustments', [ReportController::class, 'storeHppAdjustment'])->middleware('role:admin');
+    Route::delete('/reports/hpp-adjustments/{hppAdjustment}', [ReportController::class, 'destroyHppAdjustment'])->middleware('role:admin');
     Route::get('/reports/export/pdf', [ExportController::class, 'pdf'])->name('reports.export.pdf')->middleware('role:admin');
     Route::get('/reports/export/excel', [ExportController::class, 'excel'])->name('reports.export.excel')->middleware('role:admin');
 });

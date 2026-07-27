@@ -2,6 +2,7 @@
 
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\StockMovement;
 use App\Models\User;
 
 describe('product index', function () {
@@ -105,5 +106,66 @@ describe('product destroy', function () {
         expect(Product::find($product->id))->toBeNull();
         expect(Product::withTrashed()->find($product->id))->not->toBeNull();
         expect(Product::withTrashed()->find($product->id)->trashed())->toBeTrue();
+    });
+});
+
+describe('product stock', function () {
+    it('restocks and records movement', function () {
+        $admin = User::factory()->admin()->create();
+        $product = Product::factory()->create(['stok' => 10]);
+
+        $this->actingAs($admin)->postJson("/products/{$product->id}/stock", [
+            'aksi' => 'restok',
+            'jumlah' => 5,
+            'keterangan' => 'Restok bulanan',
+        ])->assertOk();
+
+        expect($product->fresh()->stok)->toBe(15);
+        expect(StockMovement::where('product_id', $product->id)->where('sumber', 'restok')->exists())->toBeTrue();
+    });
+
+    it('corrects stock to absolute value', function () {
+        $admin = User::factory()->admin()->create();
+        $product = Product::factory()->create(['stok' => 10]);
+
+        $this->actingAs($admin)->postJson("/products/{$product->id}/stock", [
+            'aksi' => 'koreksi',
+            'stok_baru' => 7,
+        ])->assertOk();
+
+        expect($product->fresh()->stok)->toBe(7);
+    });
+
+    it('blocks pegawai from adjusting stock', function () {
+        $pegawai = User::factory()->pegawai()->create();
+        $product = Product::factory()->create(['stok' => 10]);
+
+        $this->actingAs($pegawai)->postJson("/products/{$product->id}/stock", [
+            'aksi' => 'restok',
+            'jumlah' => 1,
+        ])->assertForbidden();
+    });
+
+    it('allows pegawai to view movements', function () {
+        $pegawai = User::factory()->pegawai()->create();
+        $product = Product::factory()->create();
+
+        $this->actingAs($pegawai)->getJson("/products/{$product->id}/movements")
+            ->assertOk()
+            ->assertJsonPath('success', true);
+    });
+
+    it('sets initial stock on create via movement', function () {
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)->postJson('/products', [
+            'nama' => 'Produk Stok',
+            'harga' => 100000,
+            'stok' => 12,
+        ])->assertCreated();
+
+        $product = Product::where('nama', 'Produk Stok')->first();
+        expect($product->stok)->toBe(12);
+        expect(StockMovement::where('product_id', $product->id)->sum('jumlah'))->toBe(12);
     });
 });

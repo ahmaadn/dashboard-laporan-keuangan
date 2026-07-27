@@ -2,11 +2,13 @@
 
 namespace Database\Seeders;
 
+use App\Enums\JenisTransaksi;
 use App\Models\Expense;
 use App\Models\ExpenseCategory;
 use App\Models\Income;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\StockMovement;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -25,8 +27,18 @@ class DatabaseSeeder extends Seeder
 
     private function seedExpenseCategories(): void
     {
-        foreach (['Bahan Baku', 'Operasional', 'Pengiriman'] as $nama) {
-            ExpenseCategory::firstOrCreate(['nama' => $nama]);
+        $rows = [
+            ['Bahan Baku', true],
+            ['Operasional', false],
+            ['Pengiriman', false],
+            ['Gaji', false],
+        ];
+
+        foreach ($rows as [$nama, $isBahanBaku]) {
+            ExpenseCategory::updateOrCreate(
+                ['nama' => $nama],
+                ['is_bahan_baku' => $isBahanBaku],
+            );
         }
     }
 
@@ -84,40 +96,60 @@ class DatabaseSeeder extends Seeder
     {
         $byNama = ProductCategory::all()->keyBy('nama');
 
+        // nama, kategori, sku, harga eceran, harga modal, harga grosir, stok
         $rows = [
-            ['Dompet Kulit Asli', 'Dompet', 'DPL-001', 185000, 'Dompet pria 2 lipat, kulit sapi asli.'],
-            ['Dompet Lipat Minimalis', 'Dompet', 'DPL-002', 145000, 'Desain tipis, muat 6 kartu.'],
-            ['Tas Selempang Kulit', 'Tas', 'TSL-001', 420000, 'Tas selempang crossbody, tali adjustable.'],
-            ['Tas Ransel Kulit', 'Tas', 'TSL-002', 580000, 'Ransel harian kulit premium.'],
-            ['Sabuk Kulit Pria', 'Sabuk', 'SBK-001', 135000, 'Sabuk kulit sapi, gesper stainless.'],
-            ['Sabuk Kulit Wanita', 'Sabuk', 'SBK-002', 125000, 'Sabuk elegan, motif minimalis.'],
-            ['Gelang Kulit Braided', 'Aksesoris', 'AKS-001', 65000, 'Gelang rajut kulit, magnetic clasp.'],
-            ['Card Holder Kulit', 'Dompet', 'DPL-003', 95000, 'Card holder tipis, slot ganda.'],
-            ['Passport Cover Kulit', 'Aksesoris', 'AKS-002', 110000, 'Sampul paspor kulit, emboss custom.'],
+            ['Dompet Kulit Asli', 'Dompet', 'DPL-001', 185000, 85000, 165000, 40],
+            ['Dompet Lipat Minimalis', 'Dompet', 'DPL-002', 145000, 65000, 130000, 35],
+            ['Tas Selempang Kulit', 'Tas', 'TSL-001', 420000, 210000, 380000, 25],
+            ['Tas Ransel Kulit', 'Tas', 'TSL-002', 580000, 290000, 520000, 18],
+            ['Sabuk Kulit Pria', 'Sabuk', 'SBK-001', 135000, 60000, 120000, 50],
+            ['Sabuk Kulit Wanita', 'Sabuk', 'SBK-002', 125000, 55000, 110000, 45],
+            ['Gelang Kulit Braided', 'Aksesoris', 'AKS-001', 65000, 25000, 55000, 80],
+            ['Card Holder Kulit', 'Dompet', 'DPL-003', 95000, 40000, 85000, 60],
+            ['Gantungan Kunci Kulit', 'Aksesoris', 'AKS-003', 45000, 15000, 38000, 100],
+            ['Passport Cover Kulit', 'Aksesoris', 'AKS-002', 110000, 45000, 95000, 4],
         ];
 
         $products = [];
         foreach ($rows as $i => $row) {
-            [$nama, $katNama, $sku, $harga, $deskripsi] = $row;
+            [$nama, $katNama, $sku, $harga, $modal, $grosir, $stok] = $row;
 
-            $product = Product::firstOrCreate(
+            $product = Product::updateOrCreate(
                 ['sku' => $sku],
                 [
                     'category_id' => $byNama[$katNama]?->id,
                     'nama' => $nama,
                     'harga' => $harga,
-                    'deskripsi' => $deskripsi,
+                    'harga_modal' => $modal,
+                    'harga_grosir' => $grosir,
+                    'min_qty_grosir' => 3,
+                    'stok' => 0,
+                    'stok_minimum' => 5,
+                    'deskripsi' => $nama.' — kerajinan kulit handmade.',
                     'is_active' => true,
                     'created_by' => $admin->id,
                 ],
             );
 
-            // Soft-delete the last product to demo the badge.
+            if ($stok > 0 && ! StockMovement::where('product_id', $product->id)->where('sumber', 'restok')->exists()) {
+                $product->stok = $stok;
+                $product->save();
+                StockMovement::create([
+                    'product_id' => $product->id,
+                    'user_id' => $admin->id,
+                    'tanggal' => now()->subMonths(6)->toDateString(),
+                    'jenis' => 'masuk',
+                    'jumlah' => $stok,
+                    'sumber' => 'restok',
+                    'keterangan' => 'Stok awal seeder',
+                ]);
+            }
+
             if ($i === count($rows) - 1 && ! $product->trashed()) {
                 $product->delete();
             }
 
-            $products[] = $product;
+            $products[] = $product->fresh();
         }
 
         return $products;
@@ -129,25 +161,29 @@ class DatabaseSeeder extends Seeder
      */
     private function seedIncomes(array $products, array $users): void
     {
+        if (Income::query()->exists()) {
+            return;
+        }
+
         $activeProducts = array_values(array_filter($products, fn ($p) => ! $p->trashed()));
         $recorders = [$users['admin'], $users['dimas']];
-        $keteranganPool = ['Pelanggan tetap', 'Penjualan tunai', 'Pesanan online', 'Diskon pameran', 'Penjualan grosir', '', '', 'Bukti transfer diterima'];
+        $keteranganPool = ['Pelanggan tetap', 'Penjualan tunai', 'Transfer marketplace', 'Diskon pameran', 'Penjualan grosir toko', '', '', 'Bukti transfer diterima'];
 
         $today = now()->startOfDay();
         $rand = $this->rng(20260703);
         $todayRows = [
-            [9, 0, 2, 0],
-            [13, 4, 1, 1],
-            [16, 2, 3, 1],
+            [9, 0, 2, 0, 'offline'],
+            [13, 4, 1, 1, 'online'],
+            [16, 2, 4, 1, 'offline'],
         ];
 
-        foreach ($todayRows as [$hour, $produkIdx, $jumlah, $recorderIdx]) {
-            $this->createIncome($activeProducts[$produkIdx], $jumlah, $today->copy()->setHour($hour), $recorders[$recorderIdx], $keteranganPool, $rand);
+        foreach ($todayRows as [$hour, $produkIdx, $jumlah, $recorderIdx, $jenis]) {
+            $this->createIncome($activeProducts[$produkIdx], $jumlah, $today->copy()->setHour($hour), $recorders[$recorderIdx], $keteranganPool, $rand, $jenis);
         }
 
-        for ($monthsBack = 0; $monthsBack <= 11; $monthsBack++) {
+        for ($monthsBack = 0; $monthsBack <= 5; $monthsBack++) {
             $monthStart = $today->copy()->subMonths($monthsBack)->startOfMonth();
-            $count = $monthsBack === 0 ? 6 : 5;
+            $count = $monthsBack === 0 ? 8 : 6;
 
             for ($i = 0; $i < $count; $i++) {
                 $day = (int) ($rand() * 27) + 1;
@@ -159,8 +195,9 @@ class DatabaseSeeder extends Seeder
                 $product = $activeProducts[(int) ($rand() * count($activeProducts))];
                 $jumlah = (int) ($rand() * 6) + 1;
                 $recorder = $recorders[(int) ($rand() * count($recorders))];
+                $jenis = $rand() < 0.4 ? 'online' : 'offline';
 
-                $this->createIncome($product, $jumlah, $date, $recorder, $keteranganPool, $rand);
+                $this->createIncome($product, $jumlah, $date, $recorder, $keteranganPool, $rand, $jenis);
             }
         }
     }
@@ -170,19 +207,28 @@ class DatabaseSeeder extends Seeder
      */
     private function seedExpenses(array $users): void
     {
+        if (Expense::query()->exists()) {
+            return;
+        }
+
         $categories = ExpenseCategory::all();
         $recorders = [$users['admin'], $users['dimas']];
-        $ranges = [1 => [200000, 1500000], 2 => [50000, 400000], 3 => [30000, 150000]];
-        $keteranganPool = ['Pembelian rutin', 'Restok bulanan', 'Pembayaran vendor', 'Biaya kirim pesanan', 'Keperluan toko', ''];
+        $ranges = [
+            'Bahan Baku' => [200000, 1500000],
+            'Operasional' => [50000, 400000],
+            'Pengiriman' => [30000, 150000],
+            'Gaji' => [1500000, 3500000],
+        ];
+        $keteranganPool = ['Pembelian rutin', 'Restok bulanan', 'Pembayaran vendor', 'Biaya kirim pesanan', 'Keperluan toko', 'Gaji bulanan', ''];
 
         $today = now()->startOfDay();
         $rand = $this->rng(31415);
 
-        $this->createExpense($categories[0], $ranges[1], $today->copy()->setHour(10), $recorders[0], $keteranganPool, $rand);
+        $this->createExpense($categories->firstWhere('nama', 'Bahan Baku'), $ranges['Bahan Baku'], $today->copy()->setHour(10), $recorders[0], $keteranganPool, $rand);
 
-        for ($monthsBack = 0; $monthsBack <= 11; $monthsBack++) {
+        for ($monthsBack = 0; $monthsBack <= 5; $monthsBack++) {
             $monthStart = $today->copy()->subMonths($monthsBack)->startOfMonth();
-            $count = $monthsBack === 0 ? 4 : 3;
+            $count = $monthsBack === 0 ? 5 : 4;
 
             for ($i = 0; $i < $count; $i++) {
                 $day = (int) ($rand() * 27) + 1;
@@ -193,28 +239,61 @@ class DatabaseSeeder extends Seeder
                 }
                 $kat = $categories[(int) ($rand() * count($categories))];
                 $recorder = $recorders[(int) ($rand() * count($recorders))];
+                $range = $ranges[$kat->nama] ?? [50000, 300000];
 
-                $this->createExpense($kat, $ranges[$kat->id], $date, $recorder, $keteranganPool, $rand);
+                $this->createExpense($kat, $range, $date, $recorder, $keteranganPool, $rand);
             }
         }
     }
 
-    private function createIncome(Product $product, int $jumlah, $date, User $recorder, array $keteranganPool, callable $rand): void
+    private function createIncome(Product $product, int $jumlah, $date, User $recorder, array $keteranganPool, callable $rand, string $jenis): void
     {
-        $hargaSatuan = (int) $product->harga;
-        if ($rand() < 0.18) {
-            $hargaSatuan = (int) round($hargaSatuan * 0.9);
-        }
-        $total = $jumlah * $hargaSatuan;
+        $product->refresh();
+        $jenisEnum = JenisTransaksi::from($jenis);
+        $pricing = $product->hargaUntuk($jenisEnum, $jumlah);
+        $hargaSatuan = $pricing['harga'];
+        $tipe = $pricing['tipe'];
 
-        Income::create([
+        // Jangan kurangi stok di bawah 0 di seeder
+        if ((int) $product->stok < $jumlah) {
+            $product->stok = (int) $product->stok + $jumlah + 5;
+            $product->save();
+            StockMovement::create([
+                'product_id' => $product->id,
+                'user_id' => $recorder->id,
+                'tanggal' => $date->toDateString(),
+                'jenis' => 'masuk',
+                'jumlah' => $jumlah + 5,
+                'sumber' => 'restok',
+                'keterangan' => 'Restok otomatis seeder',
+            ]);
+        }
+
+        $income = Income::create([
             'product_id' => $product->id,
             'user_id' => $recorder->id,
             'tanggal_transaksi' => $date->toDateString(),
+            'jenis_transaksi' => $jenisEnum,
             'jumlah' => $jumlah,
             'harga_satuan' => $hargaSatuan,
-            'total' => $total,
+            'hpp_satuan' => (float) $product->harga_modal,
+            'harga_tipe' => $tipe,
+            'total' => $jumlah * $hargaSatuan,
             'keterangan' => $keteranganPool[(int) ($rand() * count($keteranganPool))],
+        ]);
+
+        $product->stok = (int) $product->stok - $jumlah;
+        $product->save();
+
+        StockMovement::create([
+            'product_id' => $product->id,
+            'user_id' => $recorder->id,
+            'tanggal' => $date->toDateString(),
+            'jenis' => 'keluar',
+            'jumlah' => -$jumlah,
+            'sumber' => 'penjualan',
+            'ref_id' => $income->id,
+            'keterangan' => 'Penjualan #'.$income->id,
         ]);
     }
 
@@ -232,8 +311,6 @@ class DatabaseSeeder extends Seeder
     }
 
     /**
-     * Deterministic seeded RNG (LCG) so the seed dataset is stable.
-     *
      * @return callable(): float
      */
     private function rng(int $seed): callable

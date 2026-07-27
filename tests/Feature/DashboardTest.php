@@ -21,8 +21,10 @@ describe('dashboard data endpoint', function () {
 
         $response->assertOk()
             ->assertJsonStructure([
-                'range' => ['start', 'end', 'label', 'granularity'],
-                'summary' => ['income', 'expense', 'profit', 'hasData'],
+                'range' => ['start', 'end', 'label', 'granularity', 'hint'],
+                'summary' => ['income', 'expense', 'profit', 'hasData', 'labaKotor', 'labaBersih', 'hpp'],
+                'incomeByChannel',
+                'lowStock',
                 'trend' => ['labels', 'income', 'expense', 'buckets', 'granularity'],
                 'categoryBreakdown',
                 'productAggregates',
@@ -35,6 +37,46 @@ describe('dashboard data endpoint', function () {
 
         expect($response->json('summary.income'))->toBe(150000);
         expect($response->json('summary.hasData'))->toBeTrue();
+    });
+
+    it('computes laba kotor and excludes bahan baku from biaya operasional', function () {
+        $admin = User::factory()->admin()->create();
+        $product = Product::factory()->create(['harga_modal' => 40000]);
+        $bahanBaku = ExpenseCategory::factory()->bahanBaku()->create();
+        $ops = ExpenseCategory::factory()->create(['nama' => 'Operasional', 'is_bahan_baku' => false]);
+
+        Income::factory()->create([
+            'product_id' => $product->id,
+            'user_id' => $admin->id,
+            'tanggal_transaksi' => today(),
+            'jumlah' => 2,
+            'harga_satuan' => 100000,
+            'hpp_satuan' => 40000,
+            'total' => 200000,
+            'jenis_transaksi' => 'online',
+        ]);
+        Expense::factory()->create([
+            'category_id' => $bahanBaku->id,
+            'user_id' => $admin->id,
+            'tanggal_transaksi' => today(),
+            'nominal' => 50000,
+        ]);
+        Expense::factory()->create([
+            'category_id' => $ops->id,
+            'user_id' => $admin->id,
+            'tanggal_transaksi' => today(),
+            'nominal' => 30000,
+        ]);
+
+        $response = $this->actingAs($admin)->getJson('/api/dashboard?period=bulan_ini');
+
+        // HPP = 2 * 40000 = 80000; Laba kotor = 200000 - 80000 = 120000
+        // Biaya operasional = 30000 (bahan baku excluded); Laba bersih = 90000
+        expect($response->json('summary.hpp'))->toBe(80000);
+        expect($response->json('summary.labaKotor'))->toBe(120000);
+        expect($response->json('summary.biayaOperasional'))->toBe(30000);
+        expect($response->json('summary.labaBersih'))->toBe(90000);
+        expect($response->json('incomeByChannel.online.total'))->toBe(200000);
     });
 
     it('excludes soft-deleted transactions from aggregations', function () {
@@ -103,7 +145,10 @@ describe('dashboard compare endpoint', function () {
         $response = $this->actingAs($admin)->getJson('/api/dashboard/compare?a=bulan_lalu&b=bulan_ini');
 
         $response->assertOk()
-            ->assertJsonStructure(['a' => ['income', 'expense', 'profit', 'label'], 'b' => ['income', 'expense', 'profit', 'label']]);
+            ->assertJsonStructure([
+                'a' => ['income', 'expense', 'profit', 'labaKotor', 'labaBersih', 'label'],
+                'b' => ['income', 'expense', 'profit', 'labaKotor', 'labaBersih', 'label'],
+            ]);
 
         expect($response->json('b.income'))->toBe(200000);
         expect($response->json('a.income'))->toBe(0);

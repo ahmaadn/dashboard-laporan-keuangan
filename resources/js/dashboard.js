@@ -138,8 +138,24 @@ const dashboard = (produk, kategoriProduk, kategoriPengeluaran, pengguna) => {
         return this.serverData?.range?.label ?? 'Bulan Ini';
     },
 
+    get periodHint() {
+        return this.serverData?.range?.hint ?? 'Grafik memakai tanggal transaksi.';
+    },
+
     get summary() {
-        return this.serverData?.summary ?? { income: 0, expense: 0, profit: 0, hasData: false };
+        return this.serverData?.summary ?? {
+            income: 0, expense: 0, profit: 0, hasData: false,
+            penjualan: 0, pengeluaranKas: 0, hpp: 0, labaKotor: 0,
+            biayaOperasional: 0, labaBersih: 0, surplusKas: 0, selisihKasVsLaba: 0,
+        };
+    },
+
+    get incomeByChannel() {
+        return this.serverData?.incomeByChannel ?? { online: { count: 0, qty: 0, total: 0 }, offline: { count: 0, qty: 0, total: 0 } };
+    },
+
+    get lowStock() {
+        return this.serverData?.lowStock ?? [];
     },
 
     get categoryBreakdown() {
@@ -167,11 +183,11 @@ const dashboard = (produk, kategoriProduk, kategoriPengeluaran, pengguna) => {
     },
 
     get cmpSummaryA() {
-        return this.cmpData?.a ?? { income: 0, expense: 0, profit: 0 };
+        return this.cmpData?.a ?? { income: 0, expense: 0, profit: 0, labaKotor: 0, labaBersih: 0 };
     },
 
     get cmpSummaryB() {
-        return this.cmpData?.b ?? { income: 0, expense: 0, profit: 0 };
+        return this.cmpData?.b ?? { income: 0, expense: 0, profit: 0, labaKotor: 0, labaBersih: 0 };
     },
 
     cmpDelta(field) {

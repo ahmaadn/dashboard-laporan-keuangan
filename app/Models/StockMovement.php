@@ -2,40 +2,36 @@
 
 namespace App\Models;
 
-use App\Enums\JenisTransaksi;
-use Database\Factories\IncomeFactory;
+use Database\Factories\StockMovementFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Income extends Model
+/**
+ * Ledger mutasi stok (append-only, tanpa soft delete).
+ * Setiap baris adalah satu mutasi; stok produk = jumlah kumulatif `jumlah`.
+ */
+class StockMovement extends Model
 {
-    /** @use HasFactory<IncomeFactory> */
-    use HasFactory, SoftDeletes;
+    /** @use HasFactory<StockMovementFactory> */
+    use HasFactory;
 
     protected $fillable = [
         'product_id',
         'user_id',
-        'tanggal_transaksi',
-        'jenis_transaksi',
+        'tanggal',
+        'jenis',
         'jumlah',
-        'harga_satuan',
-        'hpp_satuan',
-        'harga_tipe',
-        'total',
+        'sumber',
+        'ref_id',
         'keterangan',
     ];
 
     protected function casts(): array
     {
         return [
-            'tanggal_transaksi' => 'date',
-            'jenis_transaksi' => JenisTransaksi::class,
-            'harga_satuan' => 'decimal:2',
-            'hpp_satuan' => 'decimal:2',
-            'total' => 'decimal:2',
-            'deleted_at' => 'datetime',
+            'tanggal' => 'date',
+            'jumlah' => 'integer',
         ];
     }
 

@@ -24,23 +24,27 @@ final class ExportRenderer
     {
         $cells = [];
 
-        $cells[] = $this->row(['Laporan Keuangan']);
+        $cells[] = $this->row(['Laporan Laba Rugi']);
         $cells[] = $this->row(['Periode', $report['rangeLabel'], '', '', '']);
         $cells[] = $this->row([]);
-        $cells[] = $this->row(['Total Pemasukan', $report['totalIncome'], '', '', '']);
-        $cells[] = $this->row(['Total Pengeluaran', $report['totalExpense'], '', '', '']);
-        $cells[] = $this->row(['Laba / Rugi', $report['profit'], '', '', '']);
+        $cells[] = $this->row(['Penjualan', (int) $report['penjualan'], '', '', '']);
+        $cells[] = $this->row(['HPP', (int) $report['hpp'], '', '', '']);
+        $cells[] = $this->row(['Laba Kotor', (int) $report['labaKotor'], '', '', '']);
+        $cells[] = $this->row(['Biaya Operasional', (int) $report['biayaOperasional'], '', '', '']);
+        $cells[] = $this->row(['Laba Bersih', (int) $report['labaBersih'], '', '', '']);
+        $cells[] = $this->row(['Pengeluaran Kas (semua)', (int) $report['pengeluaranKas'], '', '', '']);
+        $cells[] = $this->row(['Surplus Kas', (int) $report['surplusKas'], '', '', '']);
         $cells[] = $this->row([]);
 
         $cells[] = $this->row(['Pemasukan per Produk', '', '', '', '']);
-        $cells[] = $this->row(['Produk', 'Jumlah Terjual', 'Transaksi', 'Total', '']);
+        $cells[] = $this->row(['Produk', 'Qty', 'HPP', 'Total', 'Laba Kotor']);
         foreach ($report['incomeByProduct'] as $row) {
             $cells[] = $this->row([
                 $row['nama'],
                 (int) $row['qty'],
-                (int) $row['count'],
+                (int) ($row['hpp'] ?? 0),
                 (int) $row['total'],
-                '',
+                (int) ($row['laba_kotor'] ?? 0),
             ]);
         }
         $cells[] = $this->row([]);
@@ -89,7 +93,7 @@ XML
 
     private function cell(string|int $value): string
     {
-        $isNumeric = is_int($value) || (is_string($value) && $value !== '' && ctype_digit($value));
+        $isNumeric = is_int($value) || (is_string($value) && $value !== '' && preg_match('/^-?\d+$/', $value));
 
         return '<Cell'
             .($isNumeric ? ' ss:StyleID="num"' : ' ss:StyleID="h"')

@@ -14,6 +14,7 @@ class ExpenseCategoryResource extends JsonResource
         return [
             'id' => $this->id,
             'nama' => $this->nama,
+            'is_bahan_baku' => (bool) $this->is_bahan_baku,
         ];
     }
 }

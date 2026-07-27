@@ -19,7 +19,7 @@ describe('report page', function () {
 
         $response = $this->actingAs($admin)->get('/reports?period=bulan_ini');
 
-        $response->assertOk()->assertSee('250.000');
+        $response->assertOk()->assertSee('250.000')->assertSee('Laba Kotor')->assertSee('Laba Bersih');
     });
 
     it('excludes soft-deleted from report', function () {
@@ -42,6 +42,33 @@ describe('report page', function () {
 
         $report = $response->viewData('report');
         expect($report['totalIncome'])->toBe(100000.0);
+        expect($report['penjualan'])->toBe(100000.0);
+    });
+
+    it('includes hpp adjustment in period', function () {
+        $admin = User::factory()->admin()->create();
+        $product = Product::factory()->create();
+        Income::factory()->create([
+            'product_id' => $product->id,
+            'user_id' => $admin->id,
+            'tanggal_transaksi' => today(),
+            'jumlah' => 1,
+            'harga_satuan' => 100000,
+            'hpp_satuan' => 40000,
+            'total' => 100000,
+        ]);
+
+        $this->actingAs($admin)->postJson('/reports/hpp-adjustments', [
+            'tanggal' => today()->toDateString(),
+            'nominal' => 10000,
+            'keterangan' => 'Koreksi',
+        ])->assertCreated();
+
+        $response = $this->actingAs($admin)->get('/reports?period=bulan_ini');
+        $report = $response->viewData('report');
+
+        expect($report['hpp'])->toBe(50000.0);
+        expect($report['labaKotor'])->toBe(50000.0);
     });
 });
 

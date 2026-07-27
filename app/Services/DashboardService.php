@@ -6,22 +6,38 @@ use App\Http\Resources\ExpenseResource;
 use App\Http\Resources\IncomeResource;
 use App\Models\Expense;
 use App\Models\Income;
+use App\Models\Product;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 
 /**
- * Computes all dashboard aggregations server-side for a given period.
+ * Agregasi dashboard untuk periode aktif.
+ *
+ * Model keuangan (selaras ReportService):
+ * - Penjualan = SUM(incomes.total)
+ * - HPP = SUM(jumlah × hpp_satuan) + penyesuaian HPP
+ * - Laba Kotor = Penjualan − HPP
+ * - Biaya Operasional = pengeluaran non-bahan-baku
+ * - Laba Bersih = Laba Kotor − Biaya Operasional
+ * - Surplus Kas = Penjualan − Semua Pengeluaran
  */
 final class DashboardService
 {
     private const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
-    private const CATEGORY_COLORS = ['#1c1108', '#f36458', '#8a7a6a', '#c4b8aa', '#3d2a1a'];
+    private const PERIOD_HINTS = [
+        'hari_ini' => 'Hari Ini = tanggal hari ini; grafik memakai jam pencatatan.',
+        'minggu_ini' => 'Minggu Ini = Senin–Minggu kalender; grafik memakai tanggal transaksi.',
+        'bulan_ini' => 'Bulan Ini = tanggal 1–akhir bulan; grafik memakai tanggal transaksi.',
+        'tahun_ini' => 'Tahun Ini = 1 Jan–31 Des; grafik memakai bulan transaksi.',
+        'rentang' => 'Rentang kustom; grafik memakai tanggal transaksi.',
+    ];
 
-    private const PRODUCT_COLORS = ['#f36458', '#1c1108', '#37cd84', '#8a7a6a', '#0052ef'];
-
-    public function __construct(private readonly PeriodResolver $periods) {}
+    public function __construct(
+        private readonly PeriodResolver $periods,
+        private readonly ReportService $reports,
+    ) {}
 
     /** @return array<string, mixed> */
     public function data(string $period, ?string $start = null, ?string $end = null): array
@@ -32,10 +48,9 @@ final class DashboardService
         $endStr = $range['end']->toDateString();
 
         $incomes = Income::whereBetween('tanggal_transaksi', [$startStr, $endStr])->orderBy('created_at', 'desc')->get();
-        $expenses = Expense::whereBetween('tanggal_transaksi', [$startStr, $endStr])->orderBy('created_at', 'desc')->get();
+        $expenses = Expense::with('category')->whereBetween('tanggal_transaksi', [$startStr, $endStr])->orderBy('created_at', 'desc')->get();
 
-        $totalIncome = (float) $incomes->sum('total');
-        $totalExpense = (float) $expenses->sum('nominal');
+        $metrics = $this->reports->metricsForRange($startStr, $endStr);
 
         $buckets = $this->buildBuckets($range['start'], $range['end'], $range['granularity']);
         $trend = $this->computeTrend($incomes, $expenses, $buckets, $range['granularity']);
@@ -51,13 +66,25 @@ final class DashboardService
                 'end' => $endStr,
                 'label' => $this->periodLabel($period),
                 'granularity' => $range['granularity'],
+                'hint' => self::PERIOD_HINTS[$period] ?? self::PERIOD_HINTS['bulan_ini'],
             ],
             'summary' => [
-                'income' => $totalIncome,
-                'expense' => $totalExpense,
-                'profit' => $totalIncome - $totalExpense,
-                'hasData' => $totalIncome > 0 || $totalExpense > 0,
+                'income' => $metrics['penjualan'],
+                'expense' => $metrics['pengeluaranKas'],
+                'profit' => $metrics['labaBersih'],
+                'penjualan' => $metrics['penjualan'],
+                'pengeluaranKas' => $metrics['pengeluaranKas'],
+                'hpp' => $metrics['hpp'],
+                'labaKotor' => $metrics['labaKotor'],
+                'biayaOperasional' => $metrics['biayaOperasional'],
+                'pembelianBahanBaku' => $metrics['pembelianBahanBaku'],
+                'labaBersih' => $metrics['labaBersih'],
+                'surplusKas' => $metrics['surplusKas'],
+                'selisihKasVsLaba' => $metrics['selisihKasVsLaba'],
+                'hasData' => $metrics['penjualan'] > 0 || $metrics['pengeluaranKas'] > 0,
             ],
+            'incomeByChannel' => $this->incomeByChannel($incomes),
+            'lowStock' => $this->lowStockProducts(),
             'trend' => [
                 'labels' => array_column($buckets, 'label'),
                 'income' => $trend['income'],
@@ -76,7 +103,7 @@ final class DashboardService
     }
 
     /**
-     * @return array{a: array{income: float, expense: float, profit: float, label: string}, b: array{...}}
+     * @return array{a: array<string, mixed>, b: array<string, mixed>}
      */
     public function compare(string $aPreset, string $bPreset, ?string $aStart = null, ?string $aEnd = null, ?string $bStart = null, ?string $bEnd = null): array
     {
@@ -118,11 +145,9 @@ final class DashboardService
     }
 
     /**
-     * @param  CarbonInterface  $start
-     * @param  CarbonInterface  $end
      * @return array<int, array<string, mixed>>
      */
-    private function buildBuckets($start, $end, string $granularity): array
+    private function buildBuckets(CarbonInterface $start, CarbonInterface $end, string $granularity): array
     {
         $buckets = [];
         $spanYears = $start->year !== $end->year;
@@ -190,15 +215,26 @@ final class DashboardService
     private function computeCategoryBreakdown($expenses): array
     {
         $byCat = [];
+        $totalAll = 0.0;
         foreach ($expenses as $r) {
             $cid = $r->category_id;
             if (! isset($byCat[$cid])) {
-                $byCat[$cid] = ['id' => $cid, 'label' => $r->category?->nama ?? 'Lainnya', 'value' => 0];
+                $byCat[$cid] = [
+                    'id' => $cid,
+                    'label' => $r->category?->nama ?? 'Lainnya',
+                    'value' => 0,
+                    'is_bahan_baku' => (bool) ($r->category?->is_bahan_baku),
+                ];
             }
             $byCat[$cid]['value'] += (float) $r->nominal;
+            $totalAll += (float) $r->nominal;
         }
 
-        return collect($byCat)->sortByDesc('value')->values()->all();
+        return collect($byCat)->map(function (array $row) use ($totalAll) {
+            $row['percent'] = $totalAll > 0 ? round(($row['value'] / $totalAll) * 100, 1) : 0;
+
+            return $row;
+        })->sortByDesc('value')->values()->all();
     }
 
     /** @return Collection<int, array<string, mixed>> */
@@ -252,6 +288,45 @@ final class DashboardService
         return ['labels' => $labels, 'datasets' => $datasets];
     }
 
+    /** @return array{online: array{count: int, qty: int, total: int}, offline: array{count: int, qty: int, total: int}} */
+    private function incomeByChannel($incomes): array
+    {
+        $channels = [
+            'online' => ['count' => 0, 'qty' => 0, 'total' => 0],
+            'offline' => ['count' => 0, 'qty' => 0, 'total' => 0],
+        ];
+
+        foreach ($incomes as $r) {
+            $key = $r->jenis_transaksi?->value ?? 'offline';
+            if (! isset($channels[$key])) {
+                continue;
+            }
+            $channels[$key]['count']++;
+            $channels[$key]['qty'] += (int) $r->jumlah;
+            $channels[$key]['total'] += (int) $r->total;
+        }
+
+        return $channels;
+    }
+
+    /** @return array<int, array{id: int, nama: string, stok: int, stok_minimum: int}> */
+    private function lowStockProducts(): array
+    {
+        return Product::query()
+            ->where('is_active', true)
+            ->whereColumn('stok', '<=', 'stok_minimum')
+            ->orderBy('stok')
+            ->limit(10)
+            ->get(['id', 'nama', 'stok', 'stok_minimum'])
+            ->map(fn (Product $p) => [
+                'id' => $p->id,
+                'nama' => $p->nama,
+                'stok' => (int) $p->stok,
+                'stok_minimum' => (int) $p->stok_minimum,
+            ])
+            ->all();
+    }
+
     private function bucketKey($row, string $granularity): string
     {
         if ($granularity === 'hour') {
@@ -278,16 +353,10 @@ final class DashboardService
         return null;
     }
 
-    /** @return array{income: float, expense: float, profit: float} */
+    /** @return array{income: float, expense: float, profit: float, labaKotor: float, labaBersih: float, hpp: float} */
     private function summaryForRange(CarbonInterface $start, CarbonInterface $end): array
     {
-        $startStr = $start->toDateString();
-        $endStr = $end->toDateString();
-
-        $income = (float) Income::whereBetween('tanggal_transaksi', [$startStr, $endStr])->sum('total');
-        $expense = (float) Expense::whereBetween('tanggal_transaksi', [$startStr, $endStr])->sum('nominal');
-
-        return ['income' => $income, 'expense' => $expense, 'profit' => $income - $expense];
+        return $this->reports->summaryForRange($start, $end);
     }
 
     private function periodLabel(string $period): string

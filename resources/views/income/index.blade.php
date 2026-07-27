@@ -30,6 +30,7 @@
                 <thead>
                     <tr>
                         <th>Tanggal</th>
+                        <th>Jenis</th>
                         <th>Produk</th>
                         <th class="text-end">Jumlah</th>
                         <th class="text-end">Harga Satuan</th>
@@ -43,6 +44,9 @@
                     <template x-for="row in visibleRows" :key="row.id">
                         <tr :class="row.dihapus_pada ? 'ld-row-deleted' : ''">
                             <td class="tnum" x-text="row.tanggal_transaksi.split('-').reverse().join('/')"></td>
+                            <td>
+                                <span class="badge-neutral" x-text="row.jenis_transaksi_label || (row.jenis_transaksi === 'online' ? 'Online' : 'Offline')"></span>
+                            </td>
                             <td x-text="produkNama(row.id_produk)"></td>
                             <td class="text-end tnum" x-text="row.jumlah"></td>
                             <td class="text-end tnum" x-text="rupiah(row.harga_satuan)"></td>
@@ -82,9 +86,20 @@
                         <select class="form-select" x-model="form.id_produk" @change="onProductChange()">
                             <option value="">— Tanpa produk (lain-lain) —</option>
                             <template x-for="p in produkAktif" :key="p.id">
-                                <option :value="p.id" x-text="p.nama + ' · ' + rupiah(p.harga)"></option>
+                                <option :value="p.id" x-text="p.nama + ' · ' + rupiah(p.harga) + ' · stok ' + (p.stok ?? 0)"></option>
                             </template>
                         </select>
+                        <p class="ld-caption mt-1 mb-0" x-show="selectedProduct()" x-cloak>
+                            Sisa stok: <span class="tnum" x-text="selectedProduct()?.stok ?? 0"></span>
+                        </p>
+                    </div>
+                    <div>
+                        <label class="form-label">Jenis Transaksi <span class="req">*</span></label>
+                        <select class="form-select" :class="errors.jenis_transaksi ? 'ld-input-invalid' : ''" x-model="form.jenis_transaksi" @change="onPricingInputsChange()">
+                            <option value="offline">Offline</option>
+                            <option value="online">Online</option>
+                        </select>
+                        <div class="ld-field-error" x-show="errors.jenis_transaksi" x-text="errors.jenis_transaksi"></div>
                     </div>
                     <div>
                         <label class="form-label">Tanggal Transaksi <span class="req">*</span></label>
@@ -93,13 +108,20 @@
                     </div>
                     <div>
                         <label class="form-label">Jumlah <span class="req">*</span></label>
-                        <input type="number" min="1" step="1" class="form-control" :class="errors.jumlah ? 'ld-input-invalid' : ''" x-model="form.jumlah">
+                        <input type="number" min="1" step="1" class="form-control" :class="errors.jumlah ? 'ld-input-invalid' : ''" x-model="form.jumlah" @input="onPricingInputsChange()">
                         <div class="ld-field-error" x-show="errors.jumlah" x-text="errors.jumlah"></div>
                     </div>
                     <div>
-                        <label class="form-label">Harga Satuan <span class="req">*</span></label>
-                        <input type="number" min="0" step="1000" class="form-control" :class="errors.harga_satuan ? 'ld-input-invalid' : ''" x-model="form.harga_satuan">
+                        <label class="form-label">
+                            Harga Satuan <span class="req">*</span>
+                            <span class="badge-success-soft ms-1" x-show="hargaTipePreview === 'grosir'" x-cloak>Grosir</span>
+                        </label>
+                        <input type="number" min="0" step="1000" class="form-control" :class="errors.harga_satuan ? 'ld-input-invalid' : ''" x-model="form.harga_satuan" :readonly="!form.harga_manual">
                         <div class="ld-field-error" x-show="errors.harga_satuan" x-text="errors.harga_satuan"></div>
+                        <div class="form-check form-switch mt-2">
+                            <input class="form-check-input" type="checkbox" id="hargaManual" x-model="form.harga_manual" @change="onPricingInputsChange()">
+                            <label class="form-check-label" for="hargaManual">Ubah harga manual</label>
+                        </div>
                     </div>
                     <div>
                         <label class="form-label">Total (otomatis)</label>
@@ -107,7 +129,7 @@
                     </div>
                     <div class="full">
                         <label class="form-label">Keterangan</label>
-                        <textarea class="form-control" rows="2" x-model="form.keterangan" placeholder="mis. Pelanggan tetap, pesanan online"></textarea>
+                        <textarea class="form-control" rows="2" x-model="form.keterangan" placeholder="mis. Pelanggan tetap, diskon pameran"></textarea>
                     </div>
                 </div>
             </div>

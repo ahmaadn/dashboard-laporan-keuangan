@@ -14,6 +14,15 @@ class ExpenseCategoryFactory extends Factory
     {
         return [
             'nama' => fake()->unique()->word(),
+            'is_bahan_baku' => false,
         ];
+    }
+
+    public function bahanBaku(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'nama' => 'Bahan Baku',
+            'is_bahan_baku' => true,
+        ]);
     }
 }

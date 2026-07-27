@@ -58,6 +58,12 @@ const products = (rows, kategoriMap, isAdmin) => ({
     deleteTarget: null,
     toast: '',
     saving: false,
+    stockModal: null,
+    stockForm: {},
+    stockErrors: {},
+    movementsOpen: false,
+    movements: [],
+    movementsProduct: null,
 
     get visibleRows() {
         const base = this.isAdmin ? this.rows : this.rows.filter((r) => !r.dihapus_pada);
@@ -79,14 +85,24 @@ const products = (rows, kategoriMap, isAdmin) => ({
 
     openAdd() {
         this.editingId = null;
-        this.form = { nama: '', id_kategori: '', sku: '', harga: '', deskripsi: '', aktif: true };
+        this.form = {
+            nama: '', id_kategori: '', sku: '', harga: '', harga_modal: 0, harga_grosir: '',
+            min_qty_grosir: 3, stok: 0, stok_minimum: 5, deskripsi: '', aktif: true,
+        };
         this.errors = {};
         this.modalOpen = true;
     },
 
     openEdit(row) {
         this.editingId = row.id;
-        this.form = { ...row };
+        this.form = {
+            ...row,
+            harga: String(row.harga ?? ''),
+            harga_modal: String(row.harga_modal ?? 0),
+            harga_grosir: row.harga_grosir != null ? String(row.harga_grosir) : '',
+            min_qty_grosir: row.min_qty_grosir ?? 3,
+            stok_minimum: row.stok_minimum ?? 5,
+        };
         this.errors = {};
         this.modalOpen = true;
     },
@@ -96,14 +112,29 @@ const products = (rows, kategoriMap, isAdmin) => ({
         this.saving = true;
         const url = this.editingId ? `/products/${this.editingId}` : '/products';
         const method = this.editingId ? 'PUT' : 'POST';
-        const body = JSON.stringify(this.form);
+        const payload = {
+            nama: this.form.nama,
+            id_kategori: this.form.id_kategori || null,
+            sku: this.form.sku || null,
+            harga: Number(this.form.harga),
+            harga_modal: Number(this.form.harga_modal || 0),
+            harga_grosir: this.form.harga_grosir === '' || this.form.harga_grosir == null ? null : Number(this.form.harga_grosir),
+            min_qty_grosir: Number(this.form.min_qty_grosir || 3),
+            stok_minimum: Number(this.form.stok_minimum || 5),
+            deskripsi: this.form.deskripsi,
+            aktif: !!this.form.aktif,
+        };
+        if (!this.editingId) {
+            payload.stok = Number(this.form.stok || 0);
+        }
+        const body = JSON.stringify(payload);
 
         const res = await apiFetch(url, { method, body });
         this.saving = false;
 
         if (!res.success) {
             if (res.errors) {
-                this.errors = res.errors;
+                this.errors = Object.fromEntries(Object.entries(res.errors).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v]));
             } else {
                 this.errors = { nama: res.message || 'Terjadi kesalahan.' };
             }
@@ -120,6 +151,54 @@ const products = (rows, kategoriMap, isAdmin) => ({
         }
         this.modalOpen = false;
         this.dismissToast();
+    },
+
+    openStock(row, aksi) {
+        this.stockModal = row;
+        this.stockForm = { aksi, jumlah: 1, stok_baru: row.stok, keterangan: '' };
+        this.stockErrors = {};
+    },
+
+    async saveStock() {
+        if (!this.stockModal) return;
+        this.stockErrors = {};
+        const body = {
+            aksi: this.stockForm.aksi,
+            keterangan: this.stockForm.keterangan || null,
+        };
+        if (this.stockForm.aksi === 'restok') {
+            body.jumlah = Number(this.stockForm.jumlah);
+        } else {
+            body.stok_baru = Number(this.stockForm.stok_baru);
+        }
+        const res = await apiFetch(`/products/${this.stockModal.id}/stock`, {
+            method: 'POST',
+            body: JSON.stringify(body),
+        });
+        if (!res.success) {
+            if (res.errors) {
+                this.stockErrors = Object.fromEntries(Object.entries(res.errors).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v]));
+            } else {
+                this.toast = res.message || 'Gagal mengubah stok.';
+                this.dismissToast();
+            }
+            return;
+        }
+        const idx = this.rows.findIndex((r) => r.id === this.stockModal.id);
+        if (idx >= 0) Object.assign(this.rows[idx], res.resource);
+        this.stockModal = null;
+        this.toast = 'Stok diperbarui.';
+        this.dismissToast();
+    },
+
+    async openMovements(row) {
+        this.movementsProduct = row;
+        this.movements = [];
+        this.movementsOpen = true;
+        const res = await apiFetch(`/products/${row.id}/movements`);
+        if (res.success) {
+            this.movements = res.movements || [];
+        }
     },
 
     confirmDelete(row) {
@@ -167,7 +246,7 @@ const income = (rows, produkAktif, produkById, penggunaById, currentUserId) => (
         }
         const q = this.search.toLowerCase();
 
-        return this.rows.filter((r) => `${this.produkNama(r.id_produk)} ${r.tanggal_transaksi}`.toLowerCase().includes(q));
+        return this.rows.filter((r) => `${this.produkNama(r.id_produk)} ${r.tanggal_transaksi} ${r.jenis_transaksi || ''}`.toLowerCase().includes(q));
     },
 
     produkNama(id) {
@@ -178,15 +257,45 @@ const income = (rows, produkAktif, produkById, penggunaById, currentUserId) => (
         return this.penggunaById[id]?.nama ?? '—';
     },
 
+    selectedProduct() {
+        return this.produkAktif.find((x) => x.id === Number(this.form.id_produk)) || null;
+    },
+
+    get hargaTipePreview() {
+        if (this.form.harga_manual) return 'manual';
+        const p = this.selectedProduct();
+        if (!p) return 'manual';
+        const qty = Number(this.form.jumlah) || 0;
+        const min = Number(p.min_qty_grosir || 3);
+        if (this.form.jenis_transaksi === 'offline' && qty >= min && p.harga_grosir) {
+            return 'grosir';
+        }
+        return 'eceran';
+    },
+
     get computedTotal() {
         return (Number(this.form.jumlah) || 0) * (Number(this.form.harga_satuan) || 0);
     },
 
-    onProductChange() {
-        const p = this.produkAktif.find((x) => x.id === Number(this.form.id_produk));
-        if (p) {
+    applyAutoPrice() {
+        if (this.form.harga_manual) return;
+        const p = this.selectedProduct();
+        if (!p) return;
+        const qty = Number(this.form.jumlah) || 0;
+        const min = Number(p.min_qty_grosir || 3);
+        if (this.form.jenis_transaksi === 'offline' && qty >= min && p.harga_grosir) {
+            this.form.harga_satuan = p.harga_grosir;
+        } else {
             this.form.harga_satuan = p.harga;
         }
+    },
+
+    onProductChange() {
+        this.applyAutoPrice();
+    },
+
+    onPricingInputsChange() {
+        this.applyAutoPrice();
     },
 
     rupiah(n) {
@@ -195,14 +304,28 @@ const income = (rows, produkAktif, produkById, penggunaById, currentUserId) => (
 
     openAdd() {
         this.editingId = null;
-        this.form = { id_produk: '', tanggal_transaksi: todayStr(), jumlah: 1, harga_satuan: 0, keterangan: '' };
+        this.form = {
+            id_produk: '',
+            tanggal_transaksi: todayStr(),
+            jenis_transaksi: 'offline',
+            jumlah: 1,
+            harga_satuan: 0,
+            harga_manual: false,
+            keterangan: '',
+        };
         this.errors = {};
         this.modalOpen = true;
     },
 
     openEdit(row) {
         this.editingId = row.id;
-        this.form = { ...row, jumlah: String(row.jumlah), harga_satuan: String(row.harga_satuan) };
+        this.form = {
+            ...row,
+            jumlah: String(row.jumlah),
+            harga_satuan: String(row.harga_satuan),
+            jenis_transaksi: row.jenis_transaksi || 'offline',
+            harga_manual: row.harga_tipe === 'manual',
+        };
         this.errors = {};
         this.modalOpen = true;
     },
@@ -215,8 +338,10 @@ const income = (rows, produkAktif, produkById, penggunaById, currentUserId) => (
         const body = JSON.stringify({
             id_produk: this.form.id_produk || null,
             tanggal_transaksi: this.form.tanggal_transaksi,
+            jenis_transaksi: this.form.jenis_transaksi || 'offline',
             jumlah: Number(this.form.jumlah),
             harga_satuan: Number(this.form.harga_satuan),
+            harga_manual: !!this.form.harga_manual,
             keterangan: this.form.keterangan,
         });
 
@@ -225,7 +350,7 @@ const income = (rows, produkAktif, produkById, penggunaById, currentUserId) => (
 
         if (!res.success) {
             if (res.errors) {
-                this.errors = res.errors;
+                this.errors = Object.fromEntries(Object.entries(res.errors).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v]));
             } else {
                 this.errors = { tanggal_transaksi: res.message || 'Terjadi kesalahan.' };
             }
@@ -238,6 +363,11 @@ const income = (rows, produkAktif, produkById, penggunaById, currentUserId) => (
             this.toast = 'Transaksi pemasukan diperbarui.';
         } else {
             this.rows.unshift(res.resource);
+            // refresh stok di map produk client-side
+            if (res.resource?.id_produk && this.produkById[res.resource.id_produk]) {
+                const p = this.produkById[res.resource.id_produk];
+                p.stok = Math.max(0, (p.stok || 0) - Number(res.resource.jumlah || 0));
+            }
             this.toast = 'Transaksi pemasukan ditambahkan.';
         }
         this.modalOpen = false;

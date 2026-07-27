@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\JenisTransaksi;
 use App\Models\Income;
 use App\Models\Product;
 use App\Models\User;
@@ -21,8 +22,11 @@ class IncomeFactory extends Factory
             'product_id' => Product::factory(),
             'user_id' => User::factory(),
             'tanggal_transaksi' => fake()->dateTimeBetween('-1 year', 'now')->format('Y-m-d'),
+            'jenis_transaksi' => fake()->randomElement([JenisTransaksi::Online, JenisTransaksi::Offline]),
             'jumlah' => $jumlah,
             'harga_satuan' => $hargaSatuan,
+            'hpp_satuan' => (int) round($hargaSatuan * 0.45),
+            'harga_tipe' => 'eceran',
             'total' => $jumlah * $hargaSatuan,
             'keterangan' => fake()->optional()->sentence(),
         ];
