@@ -59,6 +59,7 @@
                             <td class="text-end">
                                 <button type="button" class="ld-action-link" x-show="!row.dihapus_pada" @click="openEdit(row)">Ubah</button>
                                 <button type="button" class="ld-action-link ld-action-link--danger" x-show="!row.dihapus_pada" @click="confirmDelete(row)">Hapus</button>
+                                <a :href="`/sales-returns?income_id=${row.id}`" class="ld-action-link" x-show="!row.dihapus_pada">Retur</a>
                                 <span x-show="row.dihapus_pada" class="ld-mono-caps">—</span>
                             </td>
                         </tr>
@@ -81,6 +82,20 @@
             </div>
             <div class="ld-modal__body">
                 <div class="ld-form-grid">
+                    <div>
+                        <label class="form-label">Jenis Transaksi <span class="req">*</span></label>
+                        <select class="form-select" :class="errors.jenis_transaksi ? 'ld-input-invalid' : ''" x-model="form.jenis_transaksi" @change="onPricingInputsChange()">
+                            <option value="offline">Offline</option>
+                            <option value="online">Online</option>
+                        </select>
+                        <div class="ld-field-error" x-show="errors.jenis_transaksi" x-text="errors.jenis_transaksi"></div>
+                        <p class="ld-caption mt-1 mb-0">Harga grosir otomatis hanya untuk Offline ≥ jumlah minimum grosir; Online selalu eceran.</p>
+                    </div>
+                    <div>
+                        <label class="form-label">Tanggal Transaksi <span class="req">*</span></label>
+                        <input type="date" class="form-control" :class="errors.tanggal_transaksi ? 'ld-input-invalid' : ''" x-model="form.tanggal_transaksi">
+                        <div class="ld-field-error" x-show="errors.tanggal_transaksi" x-text="errors.tanggal_transaksi"></div>
+                    </div>
                     <div class="full">
                         <label class="form-label">Produk</label>
                         <select class="form-select" x-model="form.id_produk" @change="onProductChange()">
@@ -92,19 +107,6 @@
                         <p class="ld-caption mt-1 mb-0" x-show="selectedProduct()" x-cloak>
                             Sisa stok: <span class="tnum" x-text="selectedProduct()?.stok ?? 0"></span>
                         </p>
-                    </div>
-                    <div>
-                        <label class="form-label">Jenis Transaksi <span class="req">*</span></label>
-                        <select class="form-select" :class="errors.jenis_transaksi ? 'ld-input-invalid' : ''" x-model="form.jenis_transaksi" @change="onPricingInputsChange()">
-                            <option value="offline">Offline</option>
-                            <option value="online">Online</option>
-                        </select>
-                        <div class="ld-field-error" x-show="errors.jenis_transaksi" x-text="errors.jenis_transaksi"></div>
-                    </div>
-                    <div>
-                        <label class="form-label">Tanggal Transaksi <span class="req">*</span></label>
-                        <input type="date" class="form-control" :class="errors.tanggal_transaksi ? 'ld-input-invalid' : ''" x-model="form.tanggal_transaksi">
-                        <div class="ld-field-error" x-show="errors.tanggal_transaksi" x-text="errors.tanggal_transaksi"></div>
                     </div>
                     <div>
                         <label class="form-label">Jumlah <span class="req">*</span></label>
@@ -123,7 +125,7 @@
                             <label class="form-check-label" for="hargaManual">Ubah harga manual</label>
                         </div>
                     </div>
-                    <div>
+                    <div class="full">
                         <label class="form-label">Total (otomatis)</label>
                         <input type="text" class="form-control" :value="rupiah(computedTotal)" readonly>
                     </div>

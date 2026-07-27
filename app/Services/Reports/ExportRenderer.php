@@ -27,13 +27,16 @@ final class ExportRenderer
         $cells[] = $this->row(['Laporan Laba Rugi']);
         $cells[] = $this->row(['Periode', $report['rangeLabel'], '', '', '']);
         $cells[] = $this->row([]);
-        $cells[] = $this->row(['Penjualan', (int) $report['penjualan'], '', '', '']);
+        $cells[] = $this->row(['Pendapatan Bersih', (int) ($report['pendapatanBersih'] ?? 0), '', '', '']);
+        $cells[] = $this->row(['Penjualan (kotor)', (int) $report['penjualan'], '', '', '']);
+        $cells[] = $this->row(['Retur Penjualan', (int) ($report['returTotal'] ?? 0), '', '', '']);
         $cells[] = $this->row(['HPP', (int) $report['hpp'], '', '', '']);
         $cells[] = $this->row(['Laba Kotor', (int) $report['labaKotor'], '', '', '']);
-        $cells[] = $this->row(['Biaya Operasional', (int) $report['biayaOperasional'], '', '', '']);
+        $cells[] = $this->row(['Beban Operasional', (int) $report['biayaOperasional'], '', '', '']);
         $cells[] = $this->row(['Laba Bersih', (int) $report['labaBersih'], '', '', '']);
+        $cells[] = $this->row(['Modal / Setoran', (int) ($report['modalTotal'] ?? 0), '', '', '']);
         $cells[] = $this->row(['Pengeluaran Kas (semua)', (int) $report['pengeluaranKas'], '', '', '']);
-        $cells[] = $this->row(['Surplus Kas', (int) $report['surplusKas'], '', '', '']);
+        $cells[] = $this->row(['Arus Kas Bersih (bukan laba)', (int) ($report['arusKasBersih'] ?? 0), '', '', '']);
         $cells[] = $this->row([]);
 
         $cells[] = $this->row(['Pemasukan per Produk', '', '', '', '']);

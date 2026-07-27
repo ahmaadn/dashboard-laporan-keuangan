@@ -31,34 +31,34 @@
     </div>
     <p class="ld-caption mb-3" x-text="periodHint"></p>
 
-    {{-- 8.1 Ringkasan Keuangan: Pemasukan | Pengeluaran (kas) | Laba Kotor | Laba Bersih --}}
+    {{-- 8.1 Ringkasan Keuangan: 4 kartu sesuai KEBUTUHAN_SISTEM.md #54 + REVISI_KONSEP_KEUANGAN.md Bagian 9.1 --}}
     <div class="row g-3 mb-3 align-items-stretch">
         <div class="col-md-6 col-xl-3 d-flex">
-            <button type="button" class="stat-card stat-card--income w-100" @click="openCashflow('offIncome')">
-                <span class="stat-card__label">Pemasukan</span>
-                <span class="stat-card__value tnum" x-text="fmt(summary.penjualan ?? summary.income)"></span>
-                <span class="stat-card__hint">Penjualan periode · klik rincian</span>
+            <button type="button" class="stat-card stat-card--income w-100" @click="openCashflow('offPendapatanBersih')" title="Penjualan − retur penjualan">
+                <span class="stat-card__label">Pendapatan Bersih</span>
+                <span class="stat-card__value tnum" x-text="fmt(summary.pendapatanBersih ?? summary.income ?? 0)"></span>
+                <span class="stat-card__hint">Penjualan − retur · klik rincian</span>
             </button>
         </div>
         <div class="col-md-6 col-xl-3 d-flex">
-            <button type="button" class="stat-card stat-card--expense w-100" @click="openCashflow('offExpense')">
-                <span class="stat-card__label">Pengeluaran (kas)</span>
-                <span class="stat-card__value tnum" x-text="fmt(summary.pengeluaranKas ?? summary.expense)"></span>
-                <span class="stat-card__hint">Semua kas keluar · klik rincian</span>
-            </button>
-        </div>
-        <div class="col-md-6 col-xl-3 d-flex">
-            <button type="button" class="stat-card w-100" :class="'stat-card--' + ((summary.labaKotor ?? 0) >= 0 ? 'profit' : 'loss')" @click="openCashflow('offProfit')">
+            <button type="button" class="stat-card w-100" :class="'stat-card--' + ((summary.labaKotor ?? 0) >= 0 ? 'profit' : 'loss')" @click="openCashflow('offProfit')" title="Pendapatan Bersih − HPP">
                 <span class="stat-card__label">Laba Kotor</span>
                 <span class="stat-card__value tnum" x-text="fmt(summary.labaKotor ?? 0)"></span>
-                <span class="stat-card__hint">Penjualan − HPP</span>
+                <span class="stat-card__hint">Pendapatan Bersih − HPP</span>
             </button>
         </div>
         <div class="col-md-6 col-xl-3 d-flex">
-            <button type="button" class="stat-card w-100" :class="'stat-card--' + ((summary.labaBersih ?? summary.profit) >= 0 ? 'profit' : 'loss')" @click="openCashflow('offProfit')">
+            <button type="button" class="stat-card w-100" :class="'stat-card--' + ((summary.labaBersih ?? summary.profit) >= 0 ? 'profit' : 'loss')" @click="openCashflow('offProfit')" title="Laba Kotor − Beban Operasional">
                 <span class="stat-card__label">Laba Bersih</span>
-                <span class="stat-card__value tnum" x-text="fmt(summary.labaBersih ?? summary.profit)"></span>
-                <span class="stat-card__hint">Laba kotor − biaya operasional</span>
+                <span class="stat-card__value tnum" x-text="fmt(summary.labaBersih ?? summary.profit ?? 0)"></span>
+                <span class="stat-card__hint">Laba Kotor − Beban Operasional</span>
+            </button>
+        </div>
+        <div class="col-md-6 col-xl-3 d-flex">
+            <button type="button" class="stat-card stat-card--cashflow w-100" aria-label="Arus Kas Bersih (bukan laba)" title="Total uang masuk (penjualan + modal) − seluruh kas keluar. Bukan laba.">
+                <span class="stat-card__label">Arus Kas Bersih <span class="stat-card__not-laba">◔</span></span>
+                <span class="stat-card__value tnum" x-text="fmt(summary.arusKasBersih ?? 0)"></span>
+                <span class="stat-card__hint">Kas masuk (penjualan + modal) − kas keluar</span>
             </button>
         </div>
     </div>
@@ -66,16 +66,26 @@
     <div class="row g-3 mb-4">
         <div class="col-md-6">
             <x-app-card eyebrow="Kanal" title="Online vs Offline">
-                <div class="row g-2">
-                    <div class="col-6">
-                        <div class="ld-body-sm text-muted">Online</div>
-                        <div class="tnum fw-medium" x-text="fmt((incomeByChannel.online && incomeByChannel.online.total) || 0)"></div>
-                        <div class="ld-mono-caps" x-text="(((incomeByChannel.online && incomeByChannel.online.count) || 0) + ' trx · ' + ((incomeByChannel.online && incomeByChannel.online.qty) || 0) + ' unit')"></div>
+                <div class="d-flex flex-column gap-3">
+                    <div>
+                        <div class="d-flex justify-content-between align-items-baseline">
+                            <span class="ld-body-sm">Online</span>
+                            <span class="tnum fw-medium" x-text="fmt((incomeByChannel.online && incomeByChannel.online.net_total) || (incomeByChannel.online && incomeByChannel.online.total) || 0)"></span>
+                        </div>
+                        <div class="ld-channel-bar" role="img" :aria-label="'Online '+ (channelPercent('online')) +'%'">
+                            <div class="ld-channel-bar__fill" :style="'width: ' + (channelPercent('online')) + '%'"></div>
+                        </div>
+                        <div class="ld-mono-caps" x-text="(((incomeByChannel.online && incomeByChannel.online.count) || 0) + ' trx · ' + ((incomeByChannel.online && incomeByChannel.online.qty) || 0) + ' unit · ' + (channelPercent('online')) + '%')"></div>
                     </div>
-                    <div class="col-6">
-                        <div class="ld-body-sm text-muted">Offline</div>
-                        <div class="tnum fw-medium" x-text="fmt((incomeByChannel.offline && incomeByChannel.offline.total) || 0)"></div>
-                        <div class="ld-mono-caps" x-text="(((incomeByChannel.offline && incomeByChannel.offline.count) || 0) + ' trx · ' + ((incomeByChannel.offline && incomeByChannel.offline.qty) || 0) + ' unit')"></div>
+                    <div>
+                        <div class="d-flex justify-content-between align-items-baseline">
+                            <span class="ld-body-sm">Offline</span>
+                            <span class="tnum fw-medium" x-text="fmt((incomeByChannel.offline && incomeByChannel.offline.net_total) || (incomeByChannel.offline && incomeByChannel.offline.total) || 0)"></span>
+                        </div>
+                        <div class="ld-channel-bar" role="img" :aria-label="'Offline '+ (channelPercent('offline')) +'%'">
+                            <div class="ld-channel-bar__fill ld-channel-bar__fill--offline" :style="'width: ' + (channelPercent('offline')) + '%'"></div>
+                        </div>
+                        <div class="ld-mono-caps" x-text="(((incomeByChannel.offline && incomeByChannel.offline.count) || 0) + ' trx · ' + ((incomeByChannel.offline && incomeByChannel.offline.qty) || 0) + ' unit · ' + (channelPercent('offline')) + '%')"></div>
                     </div>
                 </div>
             </x-app-card>
@@ -149,8 +159,9 @@
                             <span class="ld-rank-item__no tnum" x-text="(i + 1)"></span>
                             <span class="flex-grow-1 text-start">
                                 <span class="d-block fw-medium" x-text="p.nama"></span>
-                                <span class="ld-mono-caps" x-text="p.qty + ' unit terjual'"></span>
+                                <span class="ld-mono-caps" x-text="p.qty + ' unit terjual' + (p.stok_rendah ? ' · stok rendah' : '')"></span>
                             </span>
+                            <span class="ld-mono-caps tnum text-danger ms-2" x-show="p.stok_rendah" x-cloak title="Stok di bawah minimum">!</span>
                             <span class="tnum fw-medium" x-text="fmt(p.total)"></span>
                         </button>
                     </template>
@@ -208,10 +219,10 @@
                     </thead>
                     <tbody>
                         <tr>
-                            <td>Pemasukan</td>
-                            <td class="text-end tnum" x-text="fmt(cmpSummaryA.income)"></td>
-                            <td class="text-end tnum" x-text="fmt(cmpSummaryB.income)"></td>
-                            <td class="text-end tnum" :class="cmpDeltaClass('income')" x-text="cmpDelta('income')"></td>
+                            <td>Pendapatan Bersih</td>
+                            <td class="text-end tnum" x-text="fmt(cmpSummaryA.pendapatanBersih ?? cmpSummaryA.income ?? 0)"></td>
+                            <td class="text-end tnum" x-text="fmt(cmpSummaryB.pendapatanBersih ?? cmpSummaryB.income ?? 0)"></td>
+                            <td class="text-end tnum" :class="cmpDeltaClass('pendapatanBersih')" x-text="cmpDelta('pendapatanBersih')"></td>
                         </tr>
                         <tr>
                             <td>Pengeluaran</td>
@@ -227,9 +238,15 @@
                         </tr>
                         <tr>
                             <td>Laba Bersih</td>
-                            <td class="text-end tnum" x-text="fmt(cmpSummaryA.labaBersih ?? cmpSummaryA.profit)"></td>
-                            <td class="text-end tnum" x-text="fmt(cmpSummaryB.labaBersih ?? cmpSummaryB.profit)"></td>
+                            <td class="text-end tnum" x-text="fmt(cmpSummaryA.labaBersih ?? cmpSummaryA.profit ?? 0)"></td>
+                            <td class="text-end tnum" x-text="fmt(cmpSummaryB.labaBersih ?? cmpSummaryB.profit ?? 0)"></td>
                             <td class="text-end tnum" :class="cmpDeltaClass('labaBersih')" x-text="cmpDelta('labaBersih')"></td>
+                        </tr>
+                        <tr>
+                            <td><em>Arus Kas Bersih <span class="ld-mono-caps">(bukan laba)</span></em></td>
+                            <td class="text-end tnum" x-text="fmt(cmpSummaryA.arusKasBersih ?? 0)"></td>
+                            <td class="text-end tnum" x-text="fmt(cmpSummaryB.arusKasBersih ?? 0)"></td>
+                            <td class="text-end tnum" :class="cmpDeltaClass('arusKasBersih')" x-text="cmpDelta('arusKasBersih')"></td>
                         </tr>
                     </tbody>
                 </table>
@@ -247,6 +264,7 @@
                         <button type="button" class="ld-recent-item" @click="showTransaction(r)">
                             <span class="ld-recent-item__type">
                                 <span class="badge" :class="r.type === 'pemasukan' ? 'badge-success-soft' : 'badge-error-soft'" x-text="r.type === 'pemasukan' ? 'Masuk' : 'Keluar'"></span>
+                                <span class="badge-neutral ms-1" x-show="r.type === 'pemasukan' && r.jenis_transaksi" x-text="r.jenis_transaksi === 'online' ? 'Online' : 'Offline'"></span>
                             </span>
                             <span class="flex-grow-1 text-start">
                                 <span class="d-block fw-medium tnum" x-text="fmt(r.amount)"></span>
@@ -311,39 +329,71 @@
         </template>
     </x-offcanvas-detail>
 
-    {{-- Offcanvas: tangga laba kotor → laba bersih --}}
-    <x-offcanvas-detail id="offProfit" eyebrow="Rincian" title="Perhitungan Laba">
+    {{-- Offcanvas: rincian Pendapatan Bersih (penjualan → retur → Pendapatan Bersih) --}}
+    <x-offcanvas-detail id="offPendapatanBersih" eyebrow="Rincian" title="Pendapatan Bersih">
         <div class="d-flex flex-column gap-3">
             <div class="d-flex justify-content-between">
-                <span class="ld-body-sm">Penjualan</span>
-                <span class="tnum fw-medium" x-text="fmt(summary.penjualan ?? summary.income)"></span>
+                <span class="ld-body-sm">Penjualan (kotor)</span>
+                <span class="tnum fw-medium" x-text="fmt(summary.penjualan ?? 0)"></span>
             </div>
-            <div class="d-flex justify-content-between">
-                <span class="ld-body-sm">HPP</span>
-                <span class="tnum fw-medium" x-text="fmt(summary.hpp ?? 0)"></span>
-            </div>
-            <div class="d-flex justify-content-between">
-                <span class="fw-medium">Laba Kotor</span>
-                <span class="tnum fw-medium" x-text="fmt(summary.labaKotor ?? 0)"></span>
-            </div>
-            <div class="d-flex justify-content-between">
-                <span class="ld-body-sm">Biaya Operasional</span>
-                <span class="tnum fw-medium" x-text="fmt(summary.biayaOperasional ?? 0)"></span>
+            <div class="d-flex justify-content-between text-danger">
+                <span class="ld-body-sm">− Retur Penjualan</span>
+                <span class="tnum fw-medium" x-text="'− ' + fmt(summary.returTotal ?? 0)"></span>
             </div>
             <hr class="my-1">
             <div class="d-flex justify-content-between">
-                <span class="fw-medium">Laba Bersih</span>
-                <span class="tnum fw-bold" :class="(summary.labaBersih ?? summary.profit) >= 0 ? 'text-success' : 'text-danger'" x-text="fmt(summary.labaBersih ?? summary.profit)"></span>
-            </div>
-            <hr class="my-1">
-            <div class="d-flex justify-content-between">
-                <span class="ld-body-sm">Surplus Kas</span>
-                <span class="tnum" x-text="fmt(summary.surplusKas ?? 0)"></span>
+                <span class="fw-medium">= Pendapatan Bersih</span>
+                <span class="tnum fw-bold" x-text="fmt(summary.pendapatanBersih ?? 0)"></span>
             </div>
             <p class="ld-caption mb-0">
-                Selisih dengan kas ≈ bahan baku yang masih tersimpan sebagai stok
-                (<span class="tnum" x-text="fmt(summary.selisihKasVsLaba ?? 0)"></span>).
-                Pembelian bahan baku tercatat di kas, tetapi beban laba rugi lewat HPP saat produk terjual.
+                Retur penjualan adalah pengurang pendapatan (bukan beban).
+                Lihat Bagian 2.4 dokumen acuan.
+            </p>
+        </div>
+    </x-offcanvas-detail>
+
+    {{-- Offcanvas: tangga bertingkat dari Pendapatan Bersih ke Laba Bersih --}}
+    <x-offcanvas-detail id="offProfit" eyebrow="Rincian" title="Perhitungan Laba Rugi">
+        <div class="d-flex flex-column gap-3">
+            <div class="d-flex justify-content-between">
+                <span class="ld-body-sm">Penjualan (kotor)</span>
+                <span class="tnum fw-medium" x-text="fmt(summary.penjualan ?? 0)"></span>
+            </div>
+            <div class="d-flex justify-content-between text-danger">
+                <span class="ld-body-sm">− Retur Penjualan</span>
+                <span class="tnum fw-medium" x-text="'− ' + fmt(summary.returTotal ?? 0)"></span>
+            </div>
+            <div class="d-flex justify-content-between">
+                <span class="fw-medium">= Pendapatan Bersih</span>
+                <span class="tnum fw-medium" x-text="fmt(summary.pendapatanBersih ?? 0)"></span>
+            </div>
+            <div class="d-flex justify-content-between text-danger">
+                <span class="ld-body-sm">− HPP</span>
+                <span class="tnum fw-medium" x-text="'− ' + fmt(summary.hpp ?? 0)"></span>
+            </div>
+            <hr class="my-1">
+            <div class="d-flex justify-content-between">
+                <span class="fw-medium">= Laba Kotor</span>
+                <span class="tnum fw-medium" x-text="fmt(summary.labaKotor ?? 0)"></span>
+            </div>
+            <div class="d-flex justify-content-between text-danger">
+                <span class="ld-body-sm">− Beban Operasional</span>
+                <span class="tnum fw-medium" x-text="'− ' + fmt(summary.biayaOperasional ?? 0)"></span>
+            </div>
+            <hr class="my-1">
+            <div class="d-flex justify-content-between">
+                <span class="fw-medium">= Laba Bersih</span>
+                <span class="tnum fw-bold" :class="(summary.labaBersih ?? summary.profit) >= 0 ? 'text-success' : 'text-danger'" x-text="fmt(summary.labaBersih ?? summary.profit ?? 0)"></span>
+            </div>
+            <hr class="my-1">
+            <div class="d-flex justify-content-between">
+                <span class="ld-body-sm"><em>Arus Kas Bersih (bukan laba)</em></span>
+                <span class="tnum" x-text="fmt(summary.arusKasBersih ?? 0)"></span>
+            </div>
+            <p class="ld-caption mb-0">
+                Kas masuk: <span class="tnum" x-text="fmt(summary.arusKasMasuk ?? 0)"></span>
+                (penjualan + modal <span class="tnum" x-text="fmt(summary.modalTotal ?? 0)"></span>).
+                Kas keluar: <span class="tnum" x-text="fmt(summary.arusKasKeluar ?? 0)"></span>.
             </p>
         </div>
     </x-offcanvas-detail>

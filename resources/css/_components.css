@@ -231,6 +231,35 @@
 .stat-card--expense { border-left: 3px solid var(--ld-graphite); }
 .stat-card--profit { border-left: 3px solid var(--ld-success); }
 .stat-card--loss { border-left: 3px solid var(--ld-error); }
+.stat-card--cashflow {
+    border-left: 3px solid #6366f1;
+    background:
+        linear-gradient(90deg, rgba(99, 102, 241, 0.06), transparent 60%),
+        var(--ld-surface);
+}
+.stat-card--cashflow .stat-card__label { display: inline-flex; align-items: center; gap: 6px; }
+.stat-card__not-laba { font-style: italic; opacity: 0.7; font-size: 0.75rem; }
+.stat-card--cashflow .stat-card__hint { font-style: italic; }
+
+/* Channel share bar (Online vs Offline) */
+.ld-channel-bar {
+    position: relative;
+    height: 6px;
+    background: var(--ld-ash, #ededed);
+    border-radius: 999px;
+    overflow: hidden;
+    margin: 4px 0 6px;
+}
+.ld-channel-bar__fill {
+    height: 100%;
+    border-radius: 999px;
+    background: var(--ld-brand, #f36458);
+    transition: width 240ms ease;
+}
+.ld-channel-bar__fill--offline { background: var(--ld-graphite, #3d2a1a); }
+
+/* Empty badge for known but-not-present rows */
+.ld-empty-cell { color: var(--ld-mute, #8a7a6a); }
 
 /* --- Data table (hairline rows) --- */
 .ld-data-table {

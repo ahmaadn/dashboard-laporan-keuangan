@@ -1,0 +1,40 @@
+<?php
+
+namespace App\Http\Requests;
+
+class CapitalInjectionRequest extends BaseFormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    public function rules(): array
+    {
+        return [
+            'tanggal' => ['required', 'date', 'before_or_equal:today'],
+            'nominal' => ['required', 'numeric', 'min:0.01'],
+            'keterangan' => ['nullable', 'string', 'max:255'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'tanggal.required' => 'Tanggal setoran wajib diisi.',
+            'tanggal.before_or_equal' => 'Tanggal setoran tidak boleh melebihi hari ini.',
+            'nominal.required' => 'Nominal setoran wajib diisi.',
+            'nominal.min' => 'Nominal setoran harus lebih dari 0.',
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    public function mapped(): array
+    {
+        return [
+            'tanggal' => $this->input('tanggal'),
+            'nominal' => (float) $this->input('nominal'),
+            'keterangan' => $this->input('keterangan'),
+        ];
+    }
+}

@@ -635,6 +635,256 @@ const reports = () => ({
     },
 });
 
+const stocks = (produk, produkById, currentUser) => ({
+    produk,
+    produkById,
+    produkMap: Object.fromEntries(Object.entries(produkById).map(([k, v]) => [k, v.nama])),
+    mutasi: [],
+    search: '',
+    modalOpen: false,
+    form: {},
+    errors: {},
+    saving: false,
+    toast: '',
+
+    async init() {
+        const res = await apiFetch('/stocks/movements');
+        if (res.success) {
+            this.mutasi = res.movements || [];
+        }
+    },
+
+    get visibleProducts() {
+        if (!this.search.trim()) {
+            return this.produk;
+        }
+        const q = this.search.toLowerCase();
+
+        return this.produk.filter((p) => `${p.nama} ${p.sku || ''}`.toLowerCase().includes(q));
+    },
+
+    openAdd() {
+        this.form = { id_produk: '', tanggal: todayStr(), jumlah: 1, keterangan: '' };
+        this.errors = {};
+        this.modalOpen = true;
+    },
+
+    async save() {
+        this.errors = {};
+        this.saving = true;
+        const body = JSON.stringify({
+            id_produk: Number(this.form.id_produk) || null,
+            tanggal: this.form.tanggal,
+            jumlah: Number(this.form.jumlah),
+            keterangan: this.form.keterangan,
+        });
+        const res = await apiFetch('/stocks', { method: 'POST', body });
+        this.saving = false;
+        if (!res.success) {
+            if (res.errors) {
+                this.errors = Object.fromEntries(Object.entries(res.errors).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v]));
+            } else {
+                this.toast = res.message || 'Gagal menyimpan.';
+                this.dismissToast();
+            }
+
+            return;
+        }
+
+        // refresh movements and produk state
+        const idx = this.produk.findIndex((p) => p.id === Number(this.form.id_produk));
+        if (idx >= 0) {
+            this.produk[idx] = { ...this.produk[idx], stok: res.stok ?? (this.produk[idx].stok + Number(this.form.jumlah)) };
+            this.produkMap = Object.fromEntries(Object.entries(this.produkById).length
+                ? Object.entries(this.produkById).map(([k, v]) => [k, v.nama])
+                : []);
+            this.produkById[this.form.id_produk] = this.produk[idx];
+            this.produkMap[this.form.id_produk] = this.produk[idx].nama;
+        }
+        const mov = await apiFetch('/stocks/movements');
+        if (mov.success) {
+            this.mutasi = mov.movements || [];
+        }
+        this.modalOpen = false;
+        this.toast = 'Stok ditambahkan.';
+        this.dismissToast();
+    },
+
+    rupiah(n) {
+        return rupiah(n);
+    },
+
+    dismissToast() {
+        setTimeout(() => (this.toast = ''), 2800);
+    },
+});
+
+const capital = (rows, currentUser) => ({
+    rows,
+    currentUser,
+    isAdmin: currentUser?.peran === 'admin',
+    search: '',
+    modalOpen: false,
+    form: {},
+    errors: {},
+    deleteTarget: null,
+    toast: '',
+
+    get visibleRows() {
+        if (!this.search.trim()) {
+            return this.rows;
+        }
+        const q = this.search.toLowerCase();
+
+        return this.rows.filter((r) => `${r.tanggal || ''} ${r.keterangan || ''}`.toLowerCase().includes(q));
+    },
+
+    openAdd() {
+        this.form = { tanggal: todayStr(), nominal: '', keterangan: '' };
+        this.errors = {};
+        this.modalOpen = true;
+    },
+
+    async save() {
+        this.errors = {};
+        const body = JSON.stringify({
+            tanggal: this.form.tanggal,
+            nominal: Number(this.form.nominal),
+            keterangan: this.form.keterangan,
+        });
+        const res = await apiFetch('/capital', { method: 'POST', body });
+        if (!res.success) {
+            if (res.errors) {
+                this.errors = Object.fromEntries(Object.entries(res.errors).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v]));
+            } else {
+                this.toast = res.message || 'Gagal menyimpan.';
+                this.dismissToast();
+            }
+
+            return;
+        }
+        this.rows.unshift(res.resource);
+        this.modalOpen = false;
+        this.toast = 'Setoran modal dicatat.';
+        this.dismissToast();
+    },
+
+    confirmDelete(row) {
+        this.deleteTarget = row;
+    },
+
+    async doDelete() {
+        if (!this.deleteTarget) {
+            return;
+        }
+        const res = await apiFetch(`/capital/${this.deleteTarget.id}`, { method: 'DELETE' });
+        if (!res.success) {
+            this.toast = res.message || 'Gagal menghapus.';
+            this.deleteTarget = null;
+            this.dismissToast();
+
+            return;
+        }
+        this.deleteTarget.dihapus_pada = nowStr();
+        this.toast = 'Setoran dihapus (soft delete).';
+        this.deleteTarget = null;
+        this.dismissToast();
+    },
+
+    rupiah(n) {
+        return rupiah(n);
+    },
+
+    pencatatNama(id) {
+        return id ? ('Pencatat #' + id) : '—';
+    },
+
+    dismissToast() {
+        setTimeout(() => (this.toast = ''), 2800);
+    },
+});
+
+const salesReturns = (rows, currentUser) => ({
+    rows,
+    currentUser,
+    isAdmin: currentUser?.peran === 'admin',
+    search: '',
+    modalOpen: false,
+    form: {},
+    errors: {},
+    deleteTarget: null,
+    toast: '',
+
+    get visibleRows() {
+        if (!this.search.trim()) {
+            return this.rows;
+        }
+        const q = this.search.toLowerCase();
+
+        return this.rows.filter((r) => `${r.tanggal || ''} ${r.id_penjualan} ${r.alasan || ''}`.toLowerCase().includes(q));
+    },
+
+    openAdd() {
+        this.form = { id_penjualan: '', tanggal: todayStr(), jumlah: 1, alasan: '' };
+        this.errors = {};
+        this.modalOpen = true;
+    },
+
+    async save() {
+        this.errors = {};
+        const body = JSON.stringify({
+            id_penjualan: Number(this.form.id_penjualan),
+            tanggal: this.form.tanggal,
+            jumlah: Number(this.form.jumlah),
+            alasan: this.form.alasan,
+        });
+        const res = await apiFetch('/sales-returns', { method: 'POST', body });
+        if (!res.success) {
+            if (res.errors) {
+                this.errors = Object.fromEntries(Object.entries(res.errors).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v]));
+            } else {
+                this.errors = { id_penjualan: res.message || 'Gagal menyimpan.' };
+            }
+
+            return;
+        }
+        this.rows.unshift(res.resource);
+        this.modalOpen = false;
+        this.toast = 'Retur dicatat.';
+        this.dismissToast();
+    },
+
+    confirmDelete(row) {
+        this.deleteTarget = row;
+    },
+
+    async doDelete() {
+        if (!this.deleteTarget) {
+            return;
+        }
+        const res = await apiFetch(`/sales-returns/${this.deleteTarget.id}`, { method: 'DELETE' });
+        if (!res.success) {
+            this.toast = res.message || 'Gagal menghapus.';
+            this.deleteTarget = null;
+            this.dismissToast();
+
+            return;
+        }
+        this.deleteTarget.dihapus_pada = nowStr();
+        this.toast = 'Retur dihapus.';
+        this.deleteTarget = null;
+        this.dismissToast();
+    },
+
+    rupiah(n) {
+        return rupiah(n);
+    },
+
+    dismissToast() {
+        setTimeout(() => (this.toast = ''), 2800);
+    },
+});
+
 function todayStr() {
     const d = new Date();
 
@@ -646,5 +896,8 @@ Alpine.data('income', income);
 Alpine.data('expenses', expenses);
 Alpine.data('users', users);
 Alpine.data('reports', reports);
+Alpine.data('stocks', stocks);
+Alpine.data('capital', capital);
+Alpine.data('salesReturns', salesReturns);
 
-export { products, income, expenses, users, reports };
+export { products, income, expenses, users, reports, stocks, capital, salesReturns };

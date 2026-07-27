@@ -36,49 +36,57 @@
         <span class="ld-mono-caps ms-auto">{{ $report['rangeLabel'] }}</span>
     </div>
 
-    {{-- Tangga laba rugi --}}
+    {{-- Tangga laba rugi bertingkat sesuai REVISI_KONSEP_KEUANGAN.md Bagian 3.3 --}}
     <div class="row g-3 mb-4 align-items-stretch">
         <div class="col-md-6 col-xl-3 d-flex">
             <div class="stat-card stat-card--income w-100">
-                <span class="stat-card__label">Penjualan</span>
-                <span class="stat-card__value tnum">@rupiah($report['penjualan'])</span>
-            </div>
-        </div>
-        <div class="col-md-6 col-xl-3 d-flex">
-            <div class="stat-card stat-card--expense w-100">
-                <span class="stat-card__label">HPP</span>
-                <span class="stat-card__value tnum">@rupiah($report['hpp'])</span>
-                <span class="stat-card__hint">Termasuk penyesuaian</span>
+                <span class="stat-card__label">Pendapatan Bersih</span>
+                <span class="stat-card__value tnum">@rupiah($report['pendapatanBersih'])</span>
+                <span class="stat-card__hint">Penjualan − retur</span>
             </div>
         </div>
         <div class="col-md-6 col-xl-3 d-flex">
             <div class="stat-card w-100 {{ $report['labaKotor'] >= 0 ? 'stat-card--profit' : 'stat-card--loss' }}">
                 <span class="stat-card__label">Laba Kotor</span>
                 <span class="stat-card__value tnum">@rupiah($report['labaKotor'])</span>
+                <span class="stat-card__hint">Pendapatan Bersih − HPP</span>
             </div>
         </div>
         <div class="col-md-6 col-xl-3 d-flex">
             <div class="stat-card w-100 {{ $report['labaBersih'] >= 0 ? 'stat-card--profit' : 'stat-card--loss' }}">
                 <span class="stat-card__label">Laba Bersih</span>
                 <span class="stat-card__value tnum">@rupiah($report['labaBersih'])</span>
-                <span class="stat-card__hint">Setelah biaya operasional</span>
+                <span class="stat-card__hint">Setelah beban operasional</span>
+            </div>
+        </div>
+        <div class="col-md-6 col-xl-3 d-flex">
+            <div class="stat-card stat-card--cashflow w-100">
+                <span class="stat-card__label">Arus Kas Bersih <span class="stat-card__not-laba">◔</span></span>
+                <span class="stat-card__value tnum">@rupiah($report['arusKasBersih'])</span>
+                <span class="stat-card__hint">Kas masuk (penjualan + modal) − kas keluar</span>
             </div>
         </div>
     </div>
 
-    <x-app-card class="mb-4" eyebrow="Rincian" title="Struktur Laba Rugi">
+    <x-app-card class="mb-4" eyebrow="Rincian" title="Struktur Laba Rugi (Bertingkat)">
         <div class="d-flex flex-column gap-2">
-            <div class="d-flex justify-content-between"><span>Penjualan</span><span class="tnum">@rupiah($report['penjualan'])</span></div>
-            <div class="d-flex justify-content-between"><span>− HPP (terjual)</span><span class="tnum">@rupiah($report['hppPenjualan'])</span></div>
-            <div class="d-flex justify-content-between"><span>−/+ Penyesuaian HPP</span><span class="tnum">@rupiah($report['hppPenyesuaianTotal'])</span></div>
+            <div class="d-flex justify-content-between"><span>Penjualan (kotor)</span><span class="tnum">@rupiah($report['penjualan'])</span></div>
+            <div class="d-flex justify-content-between text-danger"><span>− Retur Penjualan</span><span class="tnum">@rupiah($report['returTotal'])</span></div>
+            <div class="d-flex justify-content-between fw-medium"><span>= Pendapatan Bersih</span><span class="tnum">@rupiah($report['pendapatanBersih'])</span></div>
+            <div class="d-flex justify-content-between text-danger"><span>− HPP (terjual)</span><span class="tnum">@rupiah($report['hppPenjualan'])</span></div>
+            <div class="d-flex justify-content-between text-danger"><span>−/+ Penyesuaian HPP</span><span class="tnum">@rupiah($report['hppPenyesuaianTotal'])</span></div>
             <div class="d-flex justify-content-between fw-medium"><span>= Laba Kotor</span><span class="tnum">@rupiah($report['labaKotor'])</span></div>
-            <div class="d-flex justify-content-between"><span>− Biaya Operasional</span><span class="tnum">@rupiah($report['biayaOperasional'])</span></div>
+            <div class="d-flex justify-content-between text-danger"><span>− Beban Operasional</span><span class="tnum">@rupiah($report['biayaOperasional'])</span></div>
             <div class="d-flex justify-content-between fw-bold"><span>= Laba Bersih</span><span class="tnum">@rupiah($report['labaBersih'])</span></div>
             <hr>
             <div class="d-flex justify-content-between"><span>Pengeluaran Kas (semua)</span><span class="tnum">@rupiah($report['pengeluaranKas'])</span></div>
-            <div class="d-flex justify-content-between"><span>Pembelian Bahan Baku (kas)</span><span class="tnum">@rupiah($report['pembelianBahanBaku'])</span></div>
-            <div class="d-flex justify-content-between"><span>Surplus Kas</span><span class="tnum">@rupiah($report['surplusKas'])</span></div>
-            <p class="ld-caption mb-0">Bahan Baku tercatat sebagai kas keluar, tetapi beban laba rugi lewat HPP saat produk terjual. Selisih kas vs laba ≈ perubahan nilai persediaan.</p>
+            <div class="d-flex justify-content-between"><span>· Pembelian Bahan Baku</span><span class="tnum text-muted">@rupiah($report['pembelianBahanBaku'])</span></div>
+            <div class="d-flex justify-content-between"><span>· Beban Operasional</span><span class="tnum text-muted">@rupiah($report['biayaOperasional'])</span></div>
+            <hr>
+            <div class="d-flex justify-content-between"><span>Modal / Setoran Pemilik (kas masuk)</span><span class="tnum">@rupiah($report['modalTotal'])</span></div>
+            <div class="d-flex justify-content-between"><span>Kas masuk total</span><span class="tnum">@rupiah($report['arusKasMasuk'])</span></div>
+            <div class="d-flex justify-content-between fw-medium"><span>= Arus Kas Bersih <span class="ld-mono-caps text-muted">(bukan laba)</span></span><span class="tnum">@rupiah($report['arusKasBersih'])</span></div>
+            <p class="ld-caption mb-0">Bahan Baku keluar tercatat di kas, tetapi masuk ke beban laba rugi lewat HPP saat produk terjual. Modal bukan pendapatan — hanya menambah kas masuk.</p>
         </div>
     </x-app-card>
 

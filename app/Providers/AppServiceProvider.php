@@ -28,18 +28,22 @@ class AppServiceProvider extends ServiceProvider
             $isAdmin = $user?->isAdmin() ?? false;
             $canSeeDashboard = $user?->canSeeDashboard() ?? false;
 
-            $menus = array_filter([
+            // Urutan sesuai KEBUTUHAN_SISTEM.md poin 5 & REVISI_KONSEP_KEUANGAN.md
+            // Bagian 9.1; menu tanpa hak akses Pegawai/admin tidak di-render.
+            $menus = array_values(array_filter([
                 ['label' => 'Dashboard', 'url' => '/dashboard', 'icon' => 'dashboard', 'show' => $canSeeDashboard],
                 ['label' => 'Data Produk', 'url' => '/products', 'icon' => 'products', 'show' => true],
+                ['label' => 'Kelola Stok', 'url' => '/stocks', 'icon' => 'stocks', 'show' => true],
                 ['label' => 'Pemasukan', 'url' => '/income', 'icon' => 'income', 'show' => true],
                 ['label' => 'Pengeluaran', 'url' => '/expenses', 'icon' => 'expenses', 'show' => true],
                 ['label' => 'Data Pengguna', 'url' => '/users', 'icon' => 'users', 'show' => $isAdmin],
                 ['label' => 'Laporan Keuangan', 'url' => '/reports', 'icon' => 'reports', 'show' => $isAdmin],
-            ], fn ($m) => $m['show']);
+                ['label' => 'Modal', 'url' => '/capital', 'icon' => 'capital', 'show' => $isAdmin],
+            ], fn ($m) => $m['show']));
 
             $view
                 ->with('currentUser', $currentUser)
-                ->with('menus', array_values($menus));
+                ->with('menus', $menus);
         });
     }
 }

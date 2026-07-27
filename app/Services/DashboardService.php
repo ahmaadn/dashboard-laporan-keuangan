@@ -7,6 +7,7 @@ use App\Http\Resources\IncomeResource;
 use App\Models\Expense;
 use App\Models\Income;
 use App\Models\Product;
+use App\Models\SalesReturn;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
@@ -14,13 +15,11 @@ use Illuminate\Support\Collection;
 /**
  * Agregasi dashboard untuk periode aktif.
  *
- * Model keuangan (selaras ReportService):
- * - Penjualan = SUM(incomes.total)
- * - HPP = SUM(jumlah × hpp_satuan) + penyesuaian HPP
- * - Laba Kotor = Penjualan − HPP
- * - Biaya Operasional = pengeluaran non-bahan-baku
- * - Laba Bersih = Laba Kotor − Biaya Operasional
- * - Surplus Kas = Penjualan − Semua Pengeluaran
+ * Model keuangan (lihat REVISI_KONSEP_KEUANGAN.md Bagian 3 & ReportService):
+ * - Pendapatan Bersih  = penjualan - retur
+ * - Laba Kotor         = Pendapatan Bersih - HPP
+ * - Laba Bersih        = Laba Kotor - Beban Operasional
+ * - Arus Kas Bersih    = (penjualan + modal) - seluruh kas keluar
  */
 final class DashboardService
 {
@@ -54,6 +53,7 @@ final class DashboardService
 
         $buckets = $this->buildBuckets($range['start'], $range['end'], $range['granularity']);
         $trend = $this->computeTrend($incomes, $expenses, $buckets, $range['granularity']);
+        $series = $this->reports->trendForRange($startStr, $endStr, $buckets, $range['granularity']);
 
         $categoryBreakdown = $this->computeCategoryBreakdown($expenses);
         $productAggregates = $this->computeProductAggregates($incomes);
@@ -69,26 +69,35 @@ final class DashboardService
                 'hint' => self::PERIOD_HINTS[$period] ?? self::PERIOD_HINTS['bulan_ini'],
             ],
             'summary' => [
-                'income' => $metrics['penjualan'],
+                'income' => $metrics['pendapatanBersih'],
                 'expense' => $metrics['pengeluaranKas'],
                 'profit' => $metrics['labaBersih'],
                 'penjualan' => $metrics['penjualan'],
+                'returTotal' => $metrics['returTotal'],
+                'pendapatanBersih' => $metrics['pendapatanBersih'],
                 'pengeluaranKas' => $metrics['pengeluaranKas'],
                 'hpp' => $metrics['hpp'],
                 'labaKotor' => $metrics['labaKotor'],
                 'biayaOperasional' => $metrics['biayaOperasional'],
                 'pembelianBahanBaku' => $metrics['pembelianBahanBaku'],
                 'labaBersih' => $metrics['labaBersih'],
-                'surplusKas' => $metrics['surplusKas'],
-                'selisihKasVsLaba' => $metrics['selisihKasVsLaba'],
-                'hasData' => $metrics['penjualan'] > 0 || $metrics['pengeluaranKas'] > 0,
+                'modalTotal' => $metrics['modalTotal'],
+                'arusKasMasuk' => $metrics['arusKasMasuk'],
+                'arusKasKeluar' => $metrics['arusKasKeluar'],
+                'arusKasBersih' => $metrics['arusKasBersih'],
+                'hasData' => $metrics['penjualan'] > 0 || $metrics['pengeluaranKas'] > 0
+                    || $metrics['returTotal'] > 0 || $metrics['modalTotal'] > 0,
             ],
-            'incomeByChannel' => $this->incomeByChannel($incomes),
+            'incomeByChannel' => $this->incomeByChannel($startStr, $endStr),
             'lowStock' => $this->lowStockProducts(),
             'trend' => [
                 'labels' => array_column($buckets, 'label'),
                 'income' => $trend['income'],
                 'expense' => $trend['expense'],
+                'pendapatanBersih' => $series['pendapatanBersih'],
+                'penjualan' => $series['penjualan'],
+                'retur' => $series['retur'],
+                'kasKeluar' => $series['kasKeluar'],
                 'buckets' => $buckets,
                 'granularity' => $range['granularity'],
             ],
@@ -247,7 +256,14 @@ final class DashboardService
             }
             $pid = $r->product_id;
             if (! isset($byProduct[$pid])) {
-                $byProduct[$pid] = ['id' => $pid, 'nama' => $r->product?->nama ?? 'Tanpa produk', 'qty' => 0, 'total' => 0];
+                $byProduct[$pid] = [
+                    'id' => $pid,
+                    'nama' => $r->product?->nama ?? 'Tanpa produk',
+                    'stok' => (int) ($r->product?->stok ?? 0),
+                    'stok_rendah' => (bool) ($r->product?->isStokRendah() ?? false),
+                    'qty' => 0,
+                    'total' => 0,
+                ];
             }
             $byProduct[$pid]['qty'] += (int) $r->jumlah;
             $byProduct[$pid]['total'] += (int) $r->total;
@@ -279,7 +295,7 @@ final class DashboardService
                 }
             }
             $datasets[] = [
-                'label' => $p['nama'],
+                'label' => $p['nama'].($p['stok_rendah'] ? ' · rendah' : ''),
                 'productId' => $p['id'],
                 'data' => $data,
             ];
@@ -288,22 +304,45 @@ final class DashboardService
         return ['labels' => $labels, 'datasets' => $datasets];
     }
 
-    /** @return array{online: array{count: int, qty: int, total: int}, offline: array{count: int, qty: int, total: int}} */
-    private function incomeByChannel($incomes): array
+    /** @return array{online: array<string, int>, offline: array<string, int>} */
+    private function incomeByChannel(string $startStr, string $endStr): array
     {
         $channels = [
-            'online' => ['count' => 0, 'qty' => 0, 'total' => 0],
-            'offline' => ['count' => 0, 'qty' => 0, 'total' => 0],
+            'online' => ['count' => 0, 'qty' => 0, 'total' => 0, 'retur' => 0, 'net_total' => 0],
+            'offline' => ['count' => 0, 'qty' => 0, 'total' => 0, 'retur' => 0, 'net_total' => 0],
         ];
 
-        foreach ($incomes as $r) {
-            $key = $r->jenis_transaksi?->value ?? 'offline';
+        $incomeRows = Income::query()
+            ->whereBetween('tanggal_transaksi', [$startStr, $endStr])
+            ->selectRaw('jenis_transaksi, COUNT(*) as count, SUM(jumlah) as qty, SUM(total) as total')
+            ->groupBy('jenis_transaksi')
+            ->get();
+
+        foreach ($incomeRows as $row) {
+            $key = is_object($row->jenis_transaksi) ? $row->jenis_transaksi->value : (string) $row->jenis_transaksi;
             if (! isset($channels[$key])) {
                 continue;
             }
-            $channels[$key]['count']++;
-            $channels[$key]['qty'] += (int) $r->jumlah;
-            $channels[$key]['total'] += (int) $r->total;
+            $channels[$key]['count'] = (int) $row->count;
+            $channels[$key]['qty'] = (int) $row->qty;
+            $channels[$key]['total'] = (int) $row->total;
+            $channels[$key]['net_total'] = (int) $row->total;
+        }
+
+        $returRows = SalesReturn::query()
+            ->whereBetween('sales_returns.tanggal', [$startStr, $endStr])
+            ->join('incomes', 'incomes.id', '=', 'sales_returns.income_id')
+            ->selectRaw('incomes.jenis_transaksi, SUM(sales_returns.nominal_retur) as retur_nominal')
+            ->groupBy('incomes.jenis_transaksi')
+            ->pluck('retur_nominal', 'incomes.jenis_transaksi');
+
+        foreach ($returRows as $key => $nominal) {
+            $keyStr = is_object($key) ? $key->value : (string) $key;
+            if (! isset($channels[$keyStr])) {
+                continue;
+            }
+            $channels[$keyStr]['retur'] = (int) $nominal;
+            $channels[$keyStr]['net_total'] = $channels[$keyStr]['total'] - (int) $nominal;
         }
 
         return $channels;
@@ -353,7 +392,7 @@ final class DashboardService
         return null;
     }
 
-    /** @return array{income: float, expense: float, profit: float, labaKotor: float, labaBersih: float, hpp: float} */
+    /** @return array<string, float> */
     private function summaryForRange(CarbonInterface $start, CarbonInterface $end): array
     {
         return $this->reports->summaryForRange($start, $end);

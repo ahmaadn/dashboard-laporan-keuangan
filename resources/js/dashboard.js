@@ -145,13 +145,32 @@ const dashboard = (produk, kategoriProduk, kategoriPengeluaran, pengguna) => {
     get summary() {
         return this.serverData?.summary ?? {
             income: 0, expense: 0, profit: 0, hasData: false,
-            penjualan: 0, pengeluaranKas: 0, hpp: 0, labaKotor: 0,
-            biayaOperasional: 0, labaBersih: 0, surplusKas: 0, selisihKasVsLaba: 0,
+            penjualan: 0, returTotal: 0, pendapatanBersih: 0,
+            pengeluaranKas: 0, hpp: 0, labaKotor: 0,
+            biayaOperasional: 0, labaBersih: 0,
+            modalTotal: 0, arusKasMasuk: 0, arusKasKeluar: 0, arusKasBersih: 0,
         };
     },
 
     get incomeByChannel() {
-        return this.serverData?.incomeByChannel ?? { online: { count: 0, qty: 0, total: 0 }, offline: { count: 0, qty: 0, total: 0 } };
+        return this.serverData?.incomeByChannel ?? {
+            online: { count: 0, qty: 0, total: 0, retur: 0, net_total: 0 },
+            offline: { count: 0, qty: 0, total: 0, retur: 0, net_total: 0 },
+        };
+    },
+
+    channelTotal(key) {
+        const c = this.incomeByChannel[key];
+        if (!c) return 0;
+        return c.net_total ?? c.total ?? 0;
+    },
+
+    channelPercent(key) {
+        const online = this.channelTotal('online');
+        const offline = this.channelTotal('offline');
+        const total = online + offline;
+        if (total <= 0) return 0;
+        return Math.round((this.channelTotal(key) / total) * 1000) / 10;
     },
 
     get lowStock() {
@@ -183,11 +202,11 @@ const dashboard = (produk, kategoriProduk, kategoriPengeluaran, pengguna) => {
     },
 
     get cmpSummaryA() {
-        return this.cmpData?.a ?? { income: 0, expense: 0, profit: 0, labaKotor: 0, labaBersih: 0 };
+        return this.cmpData?.a ?? { income: 0, expense: 0, profit: 0, labaKotor: 0, labaBersih: 0, pendapatanBersih: 0, arusKasBersih: 0 };
     },
 
     get cmpSummaryB() {
-        return this.cmpData?.b ?? { income: 0, expense: 0, profit: 0, labaKotor: 0, labaBersih: 0 };
+        return this.cmpData?.b ?? { income: 0, expense: 0, profit: 0, labaKotor: 0, labaBersih: 0, pendapatanBersih: 0, arusKasBersih: 0 };
     },
 
     cmpDelta(field) {
