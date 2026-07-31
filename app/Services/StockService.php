@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Product;
 use App\Models\StockMovement;
+use App\Support\AppTimezone;
 use Illuminate\Support\Facades\Auth;
 
 /**
@@ -90,7 +91,7 @@ final class StockService
         return StockMovement::create([
             'product_id' => $product->id,
             'user_id' => $userId ?? Auth::id(),
-            'tanggal' => $tanggal ?? now()->toDateString(),
+            'tanggal' => $tanggal ?? AppTimezone::todayDateString(),
             'jenis' => $jenis,
             'jumlah' => $signedJumlah,
             'sumber' => $sumber,

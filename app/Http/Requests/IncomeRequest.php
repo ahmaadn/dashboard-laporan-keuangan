@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\JenisTransaksi;
+use App\Support\AppTimezone;
 use Illuminate\Validation\Rule;
 
 class IncomeRequest extends BaseFormRequest
@@ -16,7 +17,7 @@ class IncomeRequest extends BaseFormRequest
     {
         return [
             'id_produk' => ['nullable', 'exists:products,id'],
-            'tanggal_transaksi' => ['required', 'date', 'before_or_equal:today'],
+            'tanggal_transaksi' => ['required', 'date', 'before_or_equal:'.AppTimezone::todayDateString()],
             'jenis_transaksi' => ['required', Rule::in(['online', 'offline'])],
             'jumlah' => ['required', 'integer', 'min:1'],
             'harga_satuan' => ['required', 'numeric', 'min:0'],

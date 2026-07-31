@@ -7,15 +7,16 @@ use App\Models\Income;
 use App\Models\Product;
 use App\Models\SalesReturn;
 use App\Models\User;
+use App\Support\AppTimezone;
 
 describe('pendapatan bersih — retur as income reducer', function () {
-    it('retur reduces pendapatan bersih without reducing laba kotor base', function () {
+    it('retur reduces pendapatan bersih and HPP for net sold units', function () {
         $admin = User::factory()->admin()->create();
         $product = Product::factory()->create(['harga' => 100000, 'harga_modal' => 40000]);
         $income = Income::factory()->create([
             'product_id' => $product->id,
             'user_id' => $admin->id,
-            'tanggal_transaksi' => today(),
+            'tanggal_transaksi' => AppTimezone::todayDateString(),
             'jumlah' => 3,
             'harga_satuan' => 100000,
             'hpp_satuan' => 40000,
@@ -26,7 +27,7 @@ describe('pendapatan bersih — retur as income reducer', function () {
             'income_id' => $income->id,
             'product_id' => $product->id,
             'user_id' => $admin->id,
-            'tanggal' => today(),
+            'tanggal' => AppTimezone::todayDateString(),
             'jumlah' => 1,
             'nominal_retur' => 100000,
         ]);
@@ -34,12 +35,45 @@ describe('pendapatan bersih — retur as income reducer', function () {
         $response = $this->actingAs($admin)->getJson('/api/dashboard?period=bulan_ini');
 
         // Pendapatan Bersih = 300000 - 100000 = 200000
-        // HPP = 3 * 40000 = 120000
-        // Laba Kotor = 200000 - 120000 = 80000
+        // HPP net = (3 - 1) * 40000 = 80000
+        // Laba Kotor = 200000 - 80000 = 120000
         expect($response->json('summary.penjualan'))->toBe(300000);
         expect($response->json('summary.returTotal'))->toBe(100000);
         expect($response->json('summary.pendapatanBersih'))->toBe(200000);
-        expect($response->json('summary.labaKotor'))->toBe(80000);
+        expect($response->json('summary.hpp'))->toBe(80000);
+        expect($response->json('summary.labaKotor'))->toBe(120000);
+    });
+
+    it('reduces HPP proportionally for partial multi-unit returns', function () {
+        $admin = User::factory()->admin()->create();
+        $product = Product::factory()->create(['harga' => 200000, 'harga_modal' => 120000]);
+        $income = Income::factory()->create([
+            'product_id' => $product->id,
+            'user_id' => $admin->id,
+            'tanggal_transaksi' => AppTimezone::todayDateString(),
+            'jumlah' => 5,
+            'harga_satuan' => 200000,
+            'hpp_satuan' => 120000,
+            'total' => 1000000,
+        ]);
+
+        SalesReturn::create([
+            'income_id' => $income->id,
+            'product_id' => $product->id,
+            'user_id' => $admin->id,
+            'tanggal' => AppTimezone::todayDateString(),
+            'jumlah' => 3,
+            'nominal_retur' => 600000,
+        ]);
+
+        $response = $this->actingAs($admin)->getJson('/api/dashboard?period=bulan_ini');
+
+        // Net qty 2 → pendapatan 400000, HPP 240000, laba kotor 160000
+        expect($response->json('summary.penjualan'))->toBe(1000000);
+        expect($response->json('summary.returTotal'))->toBe(600000);
+        expect($response->json('summary.pendapatanBersih'))->toBe(400000);
+        expect($response->json('summary.hpp'))->toBe(240000);
+        expect($response->json('summary.labaKotor'))->toBe(160000);
     });
 });
 
@@ -50,7 +84,7 @@ describe('arus kas bersih — modal injection increases kas', function () {
         Income::factory()->create([
             'product_id' => $product->id,
             'user_id' => $admin->id,
-            'tanggal_transaksi' => today(),
+            'tanggal_transaksi' => AppTimezone::todayDateString(),
             'jumlah' => 1,
             'harga_satuan' => 100000,
             'hpp_satuan' => 40000,
@@ -59,7 +93,7 @@ describe('arus kas bersih — modal injection increases kas', function () {
 
         CapitalInjection::create([
             'user_id' => $admin->id,
-            'tanggal' => today(),
+            'tanggal' => AppTimezone::todayDateString(),
             'nominal' => 1000000,
             'keterangan' => 'Setoran awal',
         ]);
@@ -116,7 +150,7 @@ describe('soft-delete exclusion', function () {
         $income = Income::factory()->create([
             'product_id' => $product->id,
             'user_id' => $admin->id,
-            'tanggal_transaksi' => today(),
+            'tanggal_transaksi' => AppTimezone::todayDateString(),
             'jumlah' => 5,
             'harga_satuan' => 100000,
             'hpp_satuan' => 40000,
@@ -126,7 +160,7 @@ describe('soft-delete exclusion', function () {
             'income_id' => $income->id,
             'product_id' => $product->id,
             'user_id' => $admin->id,
-            'tanggal' => today(),
+            'tanggal' => AppTimezone::todayDateString(),
             'jumlah' => 1,
             'nominal_retur' => 100000,
         ]);
@@ -141,7 +175,7 @@ describe('soft-delete exclusion', function () {
         $admin = User::factory()->admin()->create();
         $entry = CapitalInjection::create([
             'user_id' => $admin->id,
-            'tanggal' => today(),
+            'tanggal' => AppTimezone::todayDateString(),
             'nominal' => 500000,
         ]);
         $entry->delete();
@@ -161,7 +195,7 @@ describe('laporan tiered breakdown', function () {
         Income::factory()->create([
             'product_id' => $product->id,
             'user_id' => $admin->id,
-            'tanggal_transaksi' => today(),
+            'tanggal_transaksi' => AppTimezone::todayDateString(),
             'jumlah' => 2,
             'harga_satuan' => 100000,
             'hpp_satuan' => 40000,
@@ -170,13 +204,13 @@ describe('laporan tiered breakdown', function () {
         Expense::factory()->create([
             'category_id' => $bahanBaku->id,
             'user_id' => $admin->id,
-            'tanggal_transaksi' => today(),
+            'tanggal_transaksi' => AppTimezone::todayDateString(),
             'nominal' => 50000,
         ]);
         Expense::factory()->create([
             'category_id' => $ops->id,
             'user_id' => $admin->id,
-            'tanggal_transaksi' => today(),
+            'tanggal_transaksi' => AppTimezone::todayDateString(),
             'nominal' => 30000,
         ]);
 

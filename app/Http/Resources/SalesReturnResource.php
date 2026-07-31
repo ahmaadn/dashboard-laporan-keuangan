@@ -15,13 +15,14 @@ class SalesReturnResource extends JsonResource
             'id' => $this->id,
             'id_penjualan' => $this->income_id,
             'id_produk' => $this->product_id,
+            'nama_produk' => $this->whenLoaded('product', fn () => $this->product?->nama),
             'id_pengguna' => $this->user_id,
             'tanggal' => $this->tanggal?->format('Y-m-d'),
             'jumlah' => (int) $this->jumlah,
             'nominal_retur' => (int) $this->nominal_retur,
             'alasan' => $this->alasan,
-            'dibuat_pada' => $this->created_at?->format('Y-m-d H:i:s'),
-            'dihapus_pada' => $this->when($this->trashed(), fn () => $this->deleted_at?->format('Y-m-d H:i:s')),
+            'dibuat_pada' => $this->created_at?->format('Y-m-d\TH:i:s\Z'),
+            'dihapus_pada' => $this->when($this->trashed(), fn () => $this->deleted_at?->format('Y-m-d\TH:i:s\Z')),
         ];
     }
 }

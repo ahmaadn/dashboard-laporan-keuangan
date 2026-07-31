@@ -135,7 +135,7 @@ const dashboard = (produk, kategoriProduk, kategoriPengeluaran, pengguna) => {
     },
 
     get periodLabel() {
-        return this.serverData?.range?.label ?? 'Bulan Ini';
+        return this.serverData?.range?.label ?? '';
     },
 
     get periodHint() {

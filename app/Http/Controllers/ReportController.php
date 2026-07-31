@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\HppAdjustment;
 use App\Services\PeriodResolver;
 use App\Services\ReportService;
+use App\Support\AppTimezone;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -29,7 +30,7 @@ class ReportController extends Controller
     public function storeHppAdjustment(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'tanggal' => ['required', 'date', 'before_or_equal:today'],
+            'tanggal' => ['required', 'date', 'before_or_equal:'.AppTimezone::todayDateString()],
             'nominal' => ['required', 'numeric'],
             'keterangan' => ['nullable', 'string', 'max:255'],
         ], [

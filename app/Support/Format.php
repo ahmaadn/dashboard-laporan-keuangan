@@ -15,17 +15,27 @@ final class Format
         return 'Rp '.number_format((float) $value, 0, ',', '.');
     }
 
-    /** Short Indonesian table date ("03/07/2026"). */
+    /**
+     * Short Indonesian table date ("03/07/2026").
+     * DATE-only strings stay as calendar dates; datetimes convert to display TZ.
+     */
     public static function tanggal(?string $date): string
     {
         if (! $date) {
             return '-';
         }
 
-        return Carbon::parse($date)->format('d/m/Y');
+        if (self::isDateOnly($date)) {
+            return Carbon::parse($date)->format('d/m/Y');
+        }
+
+        return AppTimezone::toLocal($date)?->format('d/m/Y') ?? '-';
     }
 
-    /** Long Indonesian date ("3 Juli 2026"). */
+    /**
+     * Long Indonesian date ("3 Juli 2026").
+     * DATE-only strings stay as calendar dates; datetimes convert to display TZ.
+     */
     public static function tanggalLengkap(?string $date): string
     {
         if (! $date) {
@@ -33,8 +43,19 @@ final class Format
         }
 
         $months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-        $d = Carbon::parse($date);
+        $d = self::isDateOnly($date)
+            ? Carbon::parse($date)
+            : AppTimezone::toLocal($date);
+
+        if (! $d) {
+            return '-';
+        }
 
         return $d->day.' '.$months[$d->month - 1].' '.$d->year;
+    }
+
+    private static function isDateOnly(string $value): bool
+    {
+        return (bool) preg_match('/^\d{4}-\d{2}-\d{2}$/', $value);
     }
 }

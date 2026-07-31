@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Support\AppTimezone;
 use Illuminate\Validation\Rule;
 
 class StockRestockRequest extends BaseFormRequest
@@ -15,7 +16,7 @@ class StockRestockRequest extends BaseFormRequest
     {
         return [
             'id_produk' => ['required', 'integer', Rule::exists('products', 'id')],
-            'tanggal' => ['required', 'date', 'before_or_equal:today'],
+            'tanggal' => ['required', 'date', 'before_or_equal:'.AppTimezone::todayDateString()],
             'jumlah' => ['required', 'integer', 'min:1'],
             'keterangan' => ['nullable', 'string', 'max:255'],
         ];

@@ -19,7 +19,9 @@ use Carbon\CarbonInterface;
  * - penjualan            = SUM(incomes.total)                   [pendapatan kotor]
  * - returTotal           = SUM(sales_returns.nominal_retur)     [pengurang pendapatan]
  * - pendapatanBersih     = penjualan - returTotal               [Pendapatan Bersih]
- * - hppPenjualan         = SUM(incomes.jumlah * incomes.hpp_satuan)
+ * - hppKotor             = SUM(incomes.jumlah * incomes.hpp_satuan)
+ * - hppRetur             = SUM(sales_returns.jumlah * incomes.hpp_satuan)  [COGS dibalik]
+ * - hppPenjualan         = hppKotor - hppRetur                  [HPP produk net terjual]
  * - hppPenyesuaianTotal  = SUM(hpp_adjustments.nominal)
  * - hpp                  = hppPenjualan + hppPenyesuaianTotal
  * - labaKotor            = pendapatanBersih - hpp
@@ -40,8 +42,10 @@ final class ReportService
     public function summary(string $period, ?string $start = null, ?string $end = null): array
     {
         $range = $this->periods->resolve($period, $start, $end);
-        $startStr = $range['start']->toDateString();
-        $endStr = $range['end']->toDateString();
+        $startStr = $range['start_date'];
+        $endStr = $range['end_date'];
+        $startSql = $range['start_sql'];
+        $endSql = $range['end_sql'];
 
         $metrics = $this->metricsForRange($startStr, $endStr);
 
@@ -49,21 +53,33 @@ final class ReportService
         $categoryMeta = ExpenseCategory::withTrashed()->get()->keyBy('id');
 
         $incomeRows = Income::query()
-            ->whereBetween('tanggal_transaksi', [$startStr, $endStr])
+            ->whereBetween('tanggal_transaksi', [$startSql, $endSql])
             ->selectRaw('product_id, SUM(jumlah) as qty, SUM(total) as total, SUM(jumlah * hpp_satuan) as hpp, COUNT(*) as count')
             ->groupBy('product_id')
             ->get();
 
         $returByProduct = SalesReturn::query()
-            ->whereBetween('tanggal', [$startStr, $endStr])
-            ->selectRaw('product_id, SUM(nominal_retur) as retur_nominal')
+            ->whereBetween('tanggal', [$startSql, $endSql])
+            ->selectRaw('product_id, SUM(nominal_retur) as retur_nominal, SUM(jumlah) as retur_qty')
             ->groupBy('product_id')
-            ->pluck('retur_nominal', 'product_id');
+            ->get()
+            ->keyBy('product_id');
 
-        $incomeByProduct = $incomeRows->map(function ($r) use ($productNames, $returByProduct) {
+        $hppReturByProduct = SalesReturn::query()
+            ->whereBetween('sales_returns.tanggal', [$startSql, $endSql])
+            ->join('incomes', 'incomes.id', '=', 'sales_returns.income_id')
+            ->whereNull('incomes.deleted_at')
+            ->selectRaw('COALESCE(sales_returns.product_id, incomes.product_id) as product_id, SUM(sales_returns.jumlah * incomes.hpp_satuan) as hpp_retur')
+            ->groupByRaw('COALESCE(sales_returns.product_id, incomes.product_id)')
+            ->pluck('hpp_retur', 'product_id');
+
+        $incomeByProduct = $incomeRows->map(function ($r) use ($productNames, $returByProduct, $hppReturByProduct) {
             $total = (float) $r->total;
-            $hpp = (float) $r->hpp;
-            $retur = (float) ($returByProduct[$r->product_id] ?? 0);
+            $hppKotor = (float) $r->hpp;
+            $hppRetur = (float) ($hppReturByProduct[$r->product_id] ?? 0);
+            $hpp = max(0, $hppKotor - $hppRetur);
+            $returRow = $returByProduct[$r->product_id] ?? null;
+            $retur = (float) ($returRow->retur_nominal ?? 0);
 
             return [
                 'id' => $r->product_id,
@@ -79,7 +95,7 @@ final class ReportService
         })->sortByDesc('net_total')->values()->all();
 
         $expenseRows = Expense::query()
-            ->whereBetween('tanggal_transaksi', [$startStr, $endStr])
+            ->whereBetween('tanggal_transaksi', [$startSql, $endSql])
             ->selectRaw('category_id, SUM(nominal) as total, COUNT(*) as count')
             ->groupBy('category_id')
             ->get();
@@ -97,7 +113,7 @@ final class ReportService
         })->sortByDesc('total')->values()->all();
 
         $channelRows = Income::query()
-            ->whereBetween('tanggal_transaksi', [$startStr, $endStr])
+            ->whereBetween('tanggal_transaksi', [$startSql, $endSql])
             ->selectRaw('jenis_transaksi, COUNT(*) as count, SUM(jumlah) as qty, SUM(total) as total')
             ->groupBy('jenis_transaksi')
             ->get();
@@ -121,7 +137,7 @@ final class ReportService
         }
 
         $returChannelRows = SalesReturn::query()
-            ->whereBetween('sales_returns.tanggal', [$startStr, $endStr])
+            ->whereBetween('sales_returns.tanggal', [$startSql, $endSql])
             ->join('incomes', 'incomes.id', '=', 'sales_returns.income_id')
             ->selectRaw('incomes.jenis_transaksi, SUM(sales_returns.nominal_retur) as retur_nominal')
             ->groupBy('incomes.jenis_transaksi')
@@ -137,7 +153,7 @@ final class ReportService
         }
 
         $hppAdjustments = HppAdjustment::query()
-            ->whereBetween('tanggal', [$startStr, $endStr])
+            ->whereBetween('tanggal', [$startSql, $endSql])
             ->orderByDesc('tanggal')
             ->get()
             ->map(fn (HppAdjustment $a) => [
@@ -149,7 +165,7 @@ final class ReportService
             ->all();
 
         $capitalInjections = CapitalInjection::query()
-            ->whereBetween('tanggal', [$startStr, $endStr])
+            ->whereBetween('tanggal', [$startSql, $endSql])
             ->orderByDesc('tanggal')
             ->get()
             ->map(fn (CapitalInjection $c) => [
@@ -185,6 +201,8 @@ final class ReportService
      *   penjualan: float,
      *   returTotal: float,
      *   pendapatanBersih: float,
+     *   hppKotor: float,
+     *   hppRetur: float,
      *   hppPenjualan: float,
      *   hppPenyesuaianTotal: float,
      *   hpp: float,
@@ -201,33 +219,45 @@ final class ReportService
      */
     public function metricsForRange(string $startStr, string $endStr): array
     {
-        $penjualan = (float) Income::whereBetween('tanggal_transaksi', [$startStr, $endStr])->sum('total');
+        [$startSql, $endSql] = $this->sqlDateBounds($startStr, $endStr);
 
-        $returTotal = (float) SalesReturn::whereBetween('tanggal', [$startStr, $endStr])->sum('nominal_retur');
+        $penjualan = (float) Income::whereBetween('tanggal_transaksi', [$startSql, $endSql])->sum('total');
+
+        $returTotal = (float) SalesReturn::whereBetween('tanggal', [$startSql, $endSql])->sum('nominal_retur');
 
         $pendapatanBersih = $penjualan - $returTotal;
 
-        $hppPenjualan = (float) Income::whereBetween('tanggal_transaksi', [$startStr, $endStr])
+        $hppKotor = (float) Income::whereBetween('tanggal_transaksi', [$startSql, $endSql])
             ->selectRaw('COALESCE(SUM(jumlah * hpp_satuan), 0) as hpp')
             ->value('hpp');
-        $hppPenyesuaianTotal = (float) HppAdjustment::whereBetween('tanggal', [$startStr, $endStr])->sum('nominal');
+
+        // HPP dibalik sebanding qty retur × hpp_satuan penjualan asal (produk net terjual).
+        $hppRetur = (float) SalesReturn::query()
+            ->whereBetween('sales_returns.tanggal', [$startSql, $endSql])
+            ->join('incomes', 'incomes.id', '=', 'sales_returns.income_id')
+            ->whereNull('incomes.deleted_at')
+            ->selectRaw('COALESCE(SUM(sales_returns.jumlah * incomes.hpp_satuan), 0) as hpp_retur')
+            ->value('hpp_retur');
+
+        $hppPenjualan = max(0, $hppKotor - $hppRetur);
+        $hppPenyesuaianTotal = (float) HppAdjustment::whereBetween('tanggal', [$startSql, $endSql])->sum('nominal');
         $hpp = $hppPenjualan + $hppPenyesuaianTotal;
         $labaKotor = $pendapatanBersih - $hpp;
 
         $pembelianBahanBaku = (float) Expense::query()
-            ->whereBetween('tanggal_transaksi', [$startStr, $endStr])
+            ->whereBetween('tanggal_transaksi', [$startSql, $endSql])
             ->whereHas('category', fn ($q) => $q->where('is_bahan_baku', true))
             ->sum('nominal');
 
         $biayaOperasional = (float) Expense::query()
-            ->whereBetween('tanggal_transaksi', [$startStr, $endStr])
+            ->whereBetween('tanggal_transaksi', [$startSql, $endSql])
             ->whereHas('category', fn ($q) => $q->where('is_bahan_baku', false))
             ->sum('nominal');
 
         $pengeluaranKas = $pembelianBahanBaku + $biayaOperasional;
         $labaBersih = $labaKotor - $biayaOperasional;
 
-        $modalTotal = (float) CapitalInjection::whereBetween('tanggal', [$startStr, $endStr])->sum('nominal');
+        $modalTotal = (float) CapitalInjection::whereBetween('tanggal', [$startSql, $endSql])->sum('nominal');
         $arusKasMasuk = $penjualan + $modalTotal;
         $arusKasKeluar = $pengeluaranKas;
         $arusKasBersih = $arusKasMasuk - $arusKasKeluar;
@@ -236,6 +266,8 @@ final class ReportService
             'penjualan' => $penjualan,
             'returTotal' => $returTotal,
             'pendapatanBersih' => $pendapatanBersih,
+            'hppKotor' => $hppKotor,
+            'hppRetur' => $hppRetur,
             'hppPenjualan' => $hppPenjualan,
             'hppPenyesuaianTotal' => $hppPenyesuaianTotal,
             'hpp' => $hpp,
@@ -285,8 +317,10 @@ final class ReportService
         $pendapatanBersih = array_fill(0, count($buckets), 0.0);
         $kasKeluar = array_fill(0, count($buckets), 0.0);
 
+        [$startSql, $endSql] = $this->sqlDateBounds($startStr, $endStr);
+
         $incomeRows = Income::query()
-            ->whereBetween('tanggal_transaksi', [$startStr, $endStr])
+            ->whereBetween('tanggal_transaksi', [$startSql, $endSql])
             ->selectRaw('tanggal_transaksi, total')
             ->get();
         foreach ($incomeRows as $row) {
@@ -297,7 +331,7 @@ final class ReportService
         }
 
         $returRows = SalesReturn::query()
-            ->whereBetween('tanggal', [$startStr, $endStr])
+            ->whereBetween('tanggal', [$startSql, $endSql])
             ->select('tanggal', 'nominal_retur')
             ->get();
         foreach ($returRows as $row) {
@@ -308,7 +342,7 @@ final class ReportService
         }
 
         $expenseRows = Expense::query()
-            ->whereBetween('tanggal_transaksi', [$startStr, $endStr])
+            ->whereBetween('tanggal_transaksi', [$startSql, $endSql])
             ->select('tanggal_transaksi', 'nominal')
             ->get();
         foreach ($expenseRows as $row) {
@@ -346,5 +380,18 @@ final class ReportService
         }
 
         return null;
+    }
+
+    /**
+     * Inclusive SQL bounds for DATE columns stored as datetime ("Y-m-d 00:00:00").
+     *
+     * @return array{0: string, 1: string}
+     */
+    private function sqlDateBounds(string $startStr, string $endStr): array
+    {
+        $start = strlen($startStr) <= 10 ? $startStr.' 00:00:00' : $startStr;
+        $end = strlen($endStr) <= 10 ? $endStr.' 23:59:59' : $endStr;
+
+        return [$start, $end];
     }
 }

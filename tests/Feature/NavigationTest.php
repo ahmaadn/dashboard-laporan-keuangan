@@ -16,6 +16,7 @@ describe('sidebar menu and route access', function () {
         $productsPos = strpos($html, 'href="/products"');
         $stocksPos = strpos($html, 'href="/stocks"');
         $incomePos = strpos($html, 'href="/income"');
+        $returnsPos = strpos($html, 'href="/sales-returns"');
         $expensesPos = strpos($html, 'href="/expenses"');
         $usersPos = strpos($html, 'href="/users"');
         $reportsPos = strpos($html, 'href="/reports"');
@@ -24,7 +25,8 @@ describe('sidebar menu and route access', function () {
         expect($dashboardPos)->toBeLessThan($productsPos);
         expect($productsPos)->toBeLessThan($stocksPos);
         expect($stocksPos)->toBeLessThan($incomePos);
-        expect($incomePos)->toBeLessThan($expensesPos);
+        expect($incomePos)->toBeLessThan($returnsPos);
+        expect($returnsPos)->toBeLessThan($expensesPos);
         expect($expensesPos)->toBeLessThan($usersPos);
         expect($usersPos)->toBeLessThan($reportsPos);
         expect($reportsPos)->toBeLessThan($capitalPos);
@@ -43,7 +45,7 @@ describe('sidebar menu and route access', function () {
         expect(str_contains($html, 'href="/capital"'))->toBeFalse();
     });
 
-    it('pegawai sees Dashboard, Data Produk, Kelola Stok, Pemasukan, Pengeluaran', function () {
+    it('pegawai sees Dashboard, Data Produk, Kelola Stok, Pemasukan, Retur, Pengeluaran', function () {
         $pegawai = User::factory()->pegawai()->withDashboard()->create();
 
         $response = $this->actingAs($pegawai)->get('/dashboard');
@@ -54,13 +56,14 @@ describe('sidebar menu and route access', function () {
         expect(str_contains($html, 'href="/products"'))->toBeTrue();
         expect(str_contains($html, 'href="/stocks"'))->toBeTrue();
         expect(str_contains($html, 'href="/income"'))->toBeTrue();
+        expect(str_contains($html, 'href="/sales-returns"'))->toBeTrue();
         expect(str_contains($html, 'href="/expenses"'))->toBeTrue();
     });
 
     it('admin can access all menu targets', function () {
         $admin = User::factory()->admin()->create();
 
-        foreach (['/dashboard', '/products', '/stocks', '/income', '/expenses', '/users', '/reports', '/capital'] as $url) {
+        foreach (['/dashboard', '/products', '/stocks', '/income', '/sales-returns', '/expenses', '/users', '/reports', '/capital'] as $url) {
             $this->actingAs($admin)->get($url)->assertOk();
         }
     });

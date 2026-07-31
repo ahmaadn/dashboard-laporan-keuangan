@@ -59,12 +59,19 @@ class SalesReturnController extends Controller
                 );
             }
 
-            return $entry;
+            return $entry->load(['income', 'product', 'user']);
         });
 
         return response()->json([
             'success' => true,
             'resource' => SalesReturnResource::make($entry)->resolve(),
+            'income' => [
+                'id' => $income->id,
+                'jumlah_diretur' => $income->fresh()->jumlahDiretur(),
+                'sisa_retur' => $income->fresh()->sisaRetur(),
+                'status' => $income->fresh()->statusTransaksi(),
+                'status_label' => $income->fresh()->statusTransaksiLabel(),
+            ],
         ], 201);
     }
 
@@ -74,10 +81,24 @@ class SalesReturnController extends Controller
             abort(403, 'Hanya Admin yang dapat menghapus retur.');
         }
 
-        // Catatan: stok TIDAK dikembalikan saat soft delete retur — ledger stok
-        // bersifat append-only. Untuk "membatalkan" retur, hapus transaksi
-        // penjualan asalnya.
-        $salesReturn->delete();
+        DB::transaction(function () use ($request, $salesReturn) {
+            if ($salesReturn->product_id) {
+                $product = Product::lockForUpdate()->find($salesReturn->product_id);
+                if ($product) {
+                    $this->stock->catatKeluar(
+                        $product,
+                        (int) $salesReturn->jumlah,
+                        'retur',
+                        $salesReturn->id,
+                        'Pembatalan retur #'.$salesReturn->id.' (stok dikurangi kembali)',
+                        $request->user()->id,
+                        $salesReturn->tanggal?->toDateString(),
+                    );
+                }
+            }
+
+            $salesReturn->delete();
+        });
 
         return response()->json(['success' => true]);
     }

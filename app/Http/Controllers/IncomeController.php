@@ -21,7 +21,7 @@ class IncomeController extends Controller
 
     public function index(Request $request)
     {
-        $incomes = Income::orderBy('created_at', 'desc')->get();
+        $incomes = Income::with('salesReturns')->orderBy('created_at', 'desc')->get();
         $produkAktif = Product::where('is_active', true)->orderBy('nama')->get();
         $allProducts = Product::withTrashed()->get();
         $allUsers = User::withTrashed()->get();
@@ -105,7 +105,7 @@ class IncomeController extends Controller
 
         return response()->json([
             'success' => true,
-            'resource' => IncomeResource::make($income->fresh())->resolve(),
+            'resource' => IncomeResource::make($income->fresh()->load('salesReturns'))->resolve(),
         ], 201);
     }
 
@@ -192,7 +192,7 @@ class IncomeController extends Controller
 
         return response()->json([
             'success' => true,
-            'resource' => IncomeResource::make($income->fresh())->resolve(),
+            'resource' => IncomeResource::make($income->fresh()->load('salesReturns'))->resolve(),
         ]);
     }
 

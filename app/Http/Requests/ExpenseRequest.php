@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests;
 
+use App\Support\AppTimezone;
+
 class ExpenseRequest extends BaseFormRequest
 {
     public function authorize(): bool
@@ -13,7 +15,7 @@ class ExpenseRequest extends BaseFormRequest
     {
         return [
             'id_kategori' => ['required', 'exists:expense_categories,id'],
-            'tanggal_transaksi' => ['required', 'date', 'before_or_equal:today'],
+            'tanggal_transaksi' => ['required', 'date', 'before_or_equal:'.AppTimezone::todayDateString()],
             'nominal' => ['required', 'numeric', 'min:0.01'],
             'keterangan' => ['nullable', 'string', 'max:255'],
         ];

@@ -7,6 +7,7 @@ use Database\Factories\IncomeFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Income extends Model
@@ -49,5 +50,58 @@ class Income extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id')->withTrashed();
+    }
+
+    /** @return HasMany<SalesReturn, $this> */
+    public function salesReturns(): HasMany
+    {
+        return $this->hasMany(SalesReturn::class, 'income_id');
+    }
+
+    public function jumlahDiretur(): int
+    {
+        if ($this->relationLoaded('salesReturns')) {
+            return (int) $this->salesReturns->sum('jumlah');
+        }
+
+        return (int) $this->salesReturns()->sum('jumlah');
+    }
+
+    public function sisaRetur(): int
+    {
+        return max(0, (int) $this->jumlah - $this->jumlahDiretur());
+    }
+
+    /**
+     * Status penjualan: gagal (soft-deleted), berhasil, retur_sebagian, semua_diretur.
+     */
+    public function statusTransaksi(): string
+    {
+        if ($this->trashed()) {
+            return 'gagal';
+        }
+
+        $returned = $this->jumlahDiretur();
+        $qty = (int) $this->jumlah;
+
+        if ($returned <= 0) {
+            return 'berhasil';
+        }
+
+        if ($returned >= $qty) {
+            return 'semua_diretur';
+        }
+
+        return 'retur_sebagian';
+    }
+
+    public function statusTransaksiLabel(): string
+    {
+        return match ($this->statusTransaksi()) {
+            'gagal' => 'Gagal',
+            'semua_diretur' => 'Semua di retur',
+            'retur_sebagian' => 'Retur sebagian',
+            default => 'Berhasil',
+        };
     }
 }

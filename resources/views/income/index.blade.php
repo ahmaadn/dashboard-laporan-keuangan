@@ -29,6 +29,7 @@
             <table class="ld-data-table">
                 <thead>
                     <tr>
+                        <th style="width: 2rem"></th>
                         <th>Tanggal</th>
                         <th>Jenis</th>
                         <th>Produk</th>
@@ -40,9 +41,24 @@
                         <th class="text-end">Aksi</th>
                     </tr>
                 </thead>
-                <tbody>
-                    <template x-for="row in visibleRows" :key="row.id">
-                        <tr :class="row.dihapus_pada ? 'ld-row-deleted' : ''">
+                <template x-for="row in visibleRows" :key="row.id">
+                    <tbody>
+                        <tr
+                            :class="[
+                                row.dihapus_pada ? 'ld-row-deleted' : '',
+                                expandedId === row.id ? 'ld-row-expanded' : '',
+                                (row.retur_history?.length || 0) > 0 ? 'ld-row-expandable' : '',
+                            ].filter(Boolean).join(' ')"
+                            @click="toggleExpand(row)"
+                        >
+                            <td class="text-center" style="width: 2rem">
+                                <span
+                                    class="ld-mono-caps"
+                                    x-show="(row.retur_history?.length || 0) > 0"
+                                    x-text="expandedId === row.id ? '▾' : '▸'"
+                                    x-cloak
+                                ></span>
+                            </td>
                             <td class="tnum" x-text="row.tanggal_transaksi.split('-').reverse().join('/')"></td>
                             <td>
                                 <span class="badge-neutral" x-text="row.jenis_transaksi_label || (row.jenis_transaksi === 'online' ? 'Online' : 'Offline')"></span>
@@ -53,18 +69,50 @@
                             <td class="text-end tnum fw-medium" x-text="rupiah(row.total)"></td>
                             <td x-text="pencatatNama(row.id_pengguna)"></td>
                             <td>
-                                <span class="badge-soft-delete" x-show="row.dihapus_pada" x-cloak>Terhapus</span>
-                                <span class="badge-success-soft" x-show="!row.dihapus_pada" x-cloak>Aktif</span>
+                                <span :class="statusBadgeClass(row)" x-text="statusLabel(row)" x-cloak></span>
                             </td>
-                            <td class="text-end">
+                            <td class="text-end" @click.stop>
                                 <button type="button" class="ld-action-link" x-show="!row.dihapus_pada" @click="openEdit(row)">Ubah</button>
                                 <button type="button" class="ld-action-link ld-action-link--danger" x-show="!row.dihapus_pada" @click="confirmDelete(row)">Hapus</button>
-                                <a :href="`/sales-returns?income_id=${row.id}`" class="ld-action-link" x-show="!row.dihapus_pada">Retur</a>
+                                <button
+                                    type="button"
+                                    class="ld-action-link"
+                                    x-show="!row.dihapus_pada && (row.sisa_retur ?? row.jumlah) > 0"
+                                    @click="openRetur(row)"
+                                >Retur</button>
                                 <span x-show="row.dihapus_pada" class="ld-mono-caps">—</span>
                             </td>
                         </tr>
-                    </template>
-                </tbody>
+                        <tr class="ld-expand-detail" x-show="expandedId === row.id" x-cloak>
+                            <td colspan="10">
+                                <p class="ld-caption mb-0" x-show="!(row.retur_history?.length > 0)">Belum ada riwayat retur.</p>
+                                <div x-show="row.retur_history?.length > 0">
+                                    <p class="ld-mono-caps mb-2">Riwayat Retur · sisa <span class="tnum" x-text="row.sisa_retur ?? 0"></span> dari <span class="tnum" x-text="row.jumlah"></span></p>
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Tanggal</th>
+                                                <th class="text-end">Jumlah</th>
+                                                <th class="text-end">Nominal</th>
+                                                <th>Alasan</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <template x-for="h in (row.retur_history || [])" :key="h.id">
+                                                <tr>
+                                                    <td class="tnum" x-text="h.tanggal?.split('-').reverse().join('/')"></td>
+                                                    <td class="text-end tnum" x-text="h.jumlah"></td>
+                                                    <td class="text-end tnum text-danger" x-text="rupiah(h.nominal_retur)"></td>
+                                                    <td x-text="h.alasan || '—'"></td>
+                                                </tr>
+                                            </template>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </template>
             </table>
         </x-data-table>
 
@@ -138,6 +186,59 @@
             <div class="ld-modal__footer">
                 <button type="button" class="btn btn-app-secondary" @click="modalOpen = false">Batal</button>
                 <button type="button" class="btn btn-app" @click="save()">Simpan</button>
+            </div>
+        </div>
+    </div>
+
+    {{-- Retur modal --}}
+    <div class="ld-modal" x-show="returModalOpen" x-cloak @keydown.escape.window="returModalOpen = false" @click.self="returModalOpen = false" x-transition.opacity>
+        <div class="ld-modal__dialog" x-transition>
+            <div class="ld-modal__header">
+                <h5 class="ld-modal__title">Catat Retur</h5>
+                <button type="button" class="btn-close" @click="returModalOpen = false" aria-label="Tutup"></button>
+            </div>
+            <div class="ld-modal__body">
+                <div class="mb-3" x-show="returTarget" x-cloak>
+                    <p class="ld-caption mb-1">Penjualan #<span class="tnum" x-text="returTarget?.id"></span> · <span x-text="returTarget ? produkNama(returTarget.id_produk) : ''"></span></p>
+                    <p class="mb-0">
+                        Qty terjual: <strong class="tnum" x-text="returTarget?.jumlah"></strong>
+                        · Sudah diretur: <strong class="tnum" x-text="returTarget?.jumlah_diretur ?? 0"></strong>
+                        · Sisa: <strong class="tnum" x-text="returMax"></strong>
+                    </p>
+                </div>
+                <div class="ld-form-grid">
+                    <div>
+                        <label class="form-label">Tanggal Retur <span class="req">*</span></label>
+                        <input type="date" class="form-control" :class="returErrors.tanggal ? 'ld-input-invalid' : ''" x-model="returForm.tanggal">
+                        <div class="ld-field-error" x-show="returErrors.tanggal" x-text="returErrors.tanggal"></div>
+                    </div>
+                    <div>
+                        <label class="form-label">Jumlah Diretur <span class="req">*</span></label>
+                        <input
+                            type="number"
+                            min="1"
+                            :max="returMax"
+                            step="1"
+                            class="form-control"
+                            :class="returErrors.jumlah ? 'ld-input-invalid' : ''"
+                            x-model="returForm.jumlah"
+                        >
+                        <div class="ld-field-error" x-show="returErrors.jumlah" x-text="returErrors.jumlah"></div>
+                        <p class="ld-caption mt-1 mb-0">Min 1 · Max <span class="tnum" x-text="returMax"></span></p>
+                    </div>
+                    <div class="full">
+                        <label class="form-label">Alasan</label>
+                        <textarea class="form-control" rows="2" x-model="returForm.alasan" placeholder="mis. Barang cacat, Ukuran tidak sesuai"></textarea>
+                    </div>
+                    <div class="full">
+                        <label class="form-label">Perkiraan nominal retur</label>
+                        <input type="text" class="form-control" :value="rupiah(returNominalPreview)" readonly>
+                    </div>
+                </div>
+            </div>
+            <div class="ld-modal__footer">
+                <button type="button" class="btn btn-app-secondary" @click="returModalOpen = false">Batal</button>
+                <button type="button" class="btn btn-app" :disabled="returSaving || returMax < 1" @click="saveRetur()">Simpan Retur</button>
             </div>
         </div>
     </div>

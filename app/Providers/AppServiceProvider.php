@@ -35,6 +35,7 @@ class AppServiceProvider extends ServiceProvider
                 ['label' => 'Data Produk', 'url' => '/products', 'icon' => 'products', 'show' => true],
                 ['label' => 'Kelola Stok', 'url' => '/stocks', 'icon' => 'stocks', 'show' => true],
                 ['label' => 'Pemasukan', 'url' => '/income', 'icon' => 'income', 'show' => true],
+                ['label' => 'Retur Penjualan', 'url' => '/sales-returns', 'icon' => 'returns', 'show' => true],
                 ['label' => 'Pengeluaran', 'url' => '/expenses', 'icon' => 'expenses', 'show' => true],
                 ['label' => 'Data Pengguna', 'url' => '/users', 'icon' => 'users', 'show' => $isAdmin],
                 ['label' => 'Laporan Keuangan', 'url' => '/reports', 'icon' => 'reports', 'show' => $isAdmin],

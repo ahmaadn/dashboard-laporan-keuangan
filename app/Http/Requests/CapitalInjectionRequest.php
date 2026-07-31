@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests;
 
+use App\Support\AppTimezone;
+
 class CapitalInjectionRequest extends BaseFormRequest
 {
     public function authorize(): bool
@@ -12,7 +14,7 @@ class CapitalInjectionRequest extends BaseFormRequest
     public function rules(): array
     {
         return [
-            'tanggal' => ['required', 'date', 'before_or_equal:today'],
+            'tanggal' => ['required', 'date', 'before_or_equal:'.AppTimezone::todayDateString()],
             'nominal' => ['required', 'numeric', 'min:0.01'],
             'keterangan' => ['nullable', 'string', 'max:255'],
         ];

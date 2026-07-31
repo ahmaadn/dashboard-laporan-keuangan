@@ -4,7 +4,9 @@ namespace App\Http\Requests;
 
 use App\Models\Income;
 use App\Models\SalesReturn;
+use App\Support\AppTimezone;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class SalesReturnRequest extends BaseFormRequest
 {
@@ -15,11 +17,9 @@ class SalesReturnRequest extends BaseFormRequest
 
     public function rules(): array
     {
-        $incomeId = $this->input('id_penjualan');
-
         return [
-            'id_penjualan' => ['required', 'integer', Rule::exists('incomes', 'id')],
-            'tanggal' => ['required', 'date', 'before_or_equal:today'],
+            'id_penjualan' => ['required', 'integer', Rule::exists('incomes', 'id')->whereNull('deleted_at')],
+            'tanggal' => ['required', 'date', 'before_or_equal:'.AppTimezone::todayDateString()],
             'jumlah' => ['required', 'integer', 'min:1'],
             'alasan' => ['nullable', 'string', 'max:255'],
         ];
@@ -37,9 +37,34 @@ class SalesReturnRequest extends BaseFormRequest
         ];
     }
 
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            if ($validator->errors()->isNotEmpty()) {
+                return;
+            }
+
+            $income = Income::find($this->input('id_penjualan'));
+            if (! $income) {
+                return;
+            }
+
+            $alreadyReturned = (int) SalesReturn::where('income_id', $income->id)->sum('jumlah');
+            $max = max(0, (int) $income->jumlah - $alreadyReturned);
+            $requested = (int) $this->input('jumlah');
+
+            if ($requested > $max) {
+                $validator->errors()->add(
+                    'jumlah',
+                    "Jumlah retur melebihi sisa penjualan (sisa: {$max}).",
+                );
+            }
+        });
+    }
+
     /**
      * Validasi batas jumlah yang sudah diretur untuk penjualan ini.
-     * Dipanggil controller di luar rules() karena butuh query.
+     * Hanya menghitung retur aktif (soft-deleted sudah di-reverse stok-nya).
      */
     public function ensureJumlahWithinLimit(): Income
     {

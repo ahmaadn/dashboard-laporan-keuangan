@@ -69,6 +69,17 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Display / Aggregation Timezone (ISO 8601)
+    |--------------------------------------------------------------------------
+    |
+    | Storage and server clocks remain UTC. Aggregation boundaries, "today",
+    | and datetime display use this timezone via Carbon (no manual hour math).
+    |
+    */
+    'display_timezone' => env('APP_DISPLAY_TIMEZONE', 'Asia/Jakarta'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Locale Configuration
     |--------------------------------------------------------------------------
     |

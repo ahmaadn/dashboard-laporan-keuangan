@@ -8,6 +8,8 @@ use App\Models\Expense;
 use App\Models\Income;
 use App\Models\Product;
 use App\Models\SalesReturn;
+use App\Support\AppTimezone;
+use App\Support\Format;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
@@ -43,11 +45,13 @@ final class DashboardService
     {
         $range = $this->periods->resolve($period, $start, $end);
 
-        $startStr = $range['start']->toDateString();
-        $endStr = $range['end']->toDateString();
+        $startStr = $range['start_date'];
+        $endStr = $range['end_date'];
+        $startSql = $range['start_sql'];
+        $endSql = $range['end_sql'];
 
-        $incomes = Income::whereBetween('tanggal_transaksi', [$startStr, $endStr])->orderBy('created_at', 'desc')->get();
-        $expenses = Expense::with('category')->whereBetween('tanggal_transaksi', [$startStr, $endStr])->orderBy('created_at', 'desc')->get();
+        $incomes = Income::whereBetween('tanggal_transaksi', [$startSql, $endSql])->orderBy('created_at', 'desc')->get();
+        $expenses = Expense::with('category')->whereBetween('tanggal_transaksi', [$startSql, $endSql])->orderBy('created_at', 'desc')->get();
 
         $metrics = $this->reports->metricsForRange($startStr, $endStr);
 
@@ -64,7 +68,7 @@ final class DashboardService
             'range' => [
                 'start' => $startStr,
                 'end' => $endStr,
-                'label' => $this->periodLabel($period),
+                'label' => Format::tanggalLengkap($startStr).' — '.Format::tanggalLengkap($endStr),
                 'granularity' => $range['granularity'],
                 'hint' => self::PERIOD_HINTS[$period] ?? self::PERIOD_HINTS['bulan_ini'],
             ],
@@ -312,8 +316,11 @@ final class DashboardService
             'offline' => ['count' => 0, 'qty' => 0, 'total' => 0, 'retur' => 0, 'net_total' => 0],
         ];
 
+        $startSql = $startStr.' 00:00:00';
+        $endSql = $endStr.' 23:59:59';
+
         $incomeRows = Income::query()
-            ->whereBetween('tanggal_transaksi', [$startStr, $endStr])
+            ->whereBetween('tanggal_transaksi', [$startSql, $endSql])
             ->selectRaw('jenis_transaksi, COUNT(*) as count, SUM(jumlah) as qty, SUM(total) as total')
             ->groupBy('jenis_transaksi')
             ->get();
@@ -330,7 +337,7 @@ final class DashboardService
         }
 
         $returRows = SalesReturn::query()
-            ->whereBetween('sales_returns.tanggal', [$startStr, $endStr])
+            ->whereBetween('sales_returns.tanggal', [$startSql, $endSql])
             ->join('incomes', 'incomes.id', '=', 'sales_returns.income_id')
             ->selectRaw('incomes.jenis_transaksi, SUM(sales_returns.nominal_retur) as retur_nominal')
             ->groupBy('incomes.jenis_transaksi')
@@ -369,7 +376,9 @@ final class DashboardService
     private function bucketKey($row, string $granularity): string
     {
         if ($granularity === 'hour') {
-            return 'h'.$row->created_at->hour;
+            $local = AppTimezone::toLocal($row->created_at);
+
+            return 'h'.($local?->hour ?? 0);
         }
         if ($granularity === 'month') {
             return substr($row->tanggal_transaksi->format('Y-m-d'), 0, 7);
@@ -396,11 +405,6 @@ final class DashboardService
     private function summaryForRange(CarbonInterface $start, CarbonInterface $end): array
     {
         return $this->reports->summaryForRange($start, $end);
-    }
-
-    private function periodLabel(string $period): string
-    {
-        return PeriodResolver::OPTIONS[$period] ?? 'Bulan Ini';
     }
 
     private function presetLabel(string $preset): string

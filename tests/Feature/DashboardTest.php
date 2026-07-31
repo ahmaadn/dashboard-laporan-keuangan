@@ -5,6 +5,7 @@ use App\Models\ExpenseCategory;
 use App\Models\Income;
 use App\Models\Product;
 use App\Models\User;
+use App\Support\AppTimezone;
 
 describe('dashboard data endpoint', function () {
     it('returns summary and aggregations', function () {
@@ -13,7 +14,7 @@ describe('dashboard data endpoint', function () {
         Income::factory()->create([
             'product_id' => $product->id,
             'user_id' => $admin->id,
-            'tanggal_transaksi' => today(),
+            'tanggal_transaksi' => AppTimezone::todayDateString(),
             'total' => 150000,
         ]);
 
@@ -37,6 +38,8 @@ describe('dashboard data endpoint', function () {
 
         expect($response->json('summary.income'))->toBe(150000);
         expect($response->json('summary.hasData'))->toBeTrue();
+        expect($response->json('range.label'))->toMatch('/^\d{1,2} \w+ \d{4} — \d{1,2} \w+ \d{4}$/');
+        expect($response->json('range.label'))->not->toBe('Bulan Ini');
     });
 
     it('computes laba kotor and excludes bahan baku from biaya operasional', function () {
@@ -48,7 +51,7 @@ describe('dashboard data endpoint', function () {
         Income::factory()->create([
             'product_id' => $product->id,
             'user_id' => $admin->id,
-            'tanggal_transaksi' => today(),
+            'tanggal_transaksi' => AppTimezone::todayDateString(),
             'jumlah' => 2,
             'harga_satuan' => 100000,
             'hpp_satuan' => 40000,
@@ -58,13 +61,13 @@ describe('dashboard data endpoint', function () {
         Expense::factory()->create([
             'category_id' => $bahanBaku->id,
             'user_id' => $admin->id,
-            'tanggal_transaksi' => today(),
+            'tanggal_transaksi' => AppTimezone::todayDateString(),
             'nominal' => 50000,
         ]);
         Expense::factory()->create([
             'category_id' => $ops->id,
             'user_id' => $admin->id,
-            'tanggal_transaksi' => today(),
+            'tanggal_transaksi' => AppTimezone::todayDateString(),
             'nominal' => 30000,
         ]);
 
@@ -85,13 +88,13 @@ describe('dashboard data endpoint', function () {
         Income::factory()->create([
             'product_id' => $product->id,
             'user_id' => $admin->id,
-            'tanggal_transaksi' => today(),
+            'tanggal_transaksi' => AppTimezone::todayDateString(),
             'total' => 100000,
         ]);
         Income::factory()->create([
             'product_id' => $product->id,
             'user_id' => $admin->id,
-            'tanggal_transaksi' => today(),
+            'tanggal_transaksi' => AppTimezone::todayDateString(),
             'total' => 50000,
         ])->delete();
 
@@ -119,7 +122,7 @@ describe('dashboard data endpoint', function () {
         Expense::factory()->create([
             'category_id' => $category->id,
             'user_id' => $admin->id,
-            'tanggal_transaksi' => today(),
+            'tanggal_transaksi' => AppTimezone::todayDateString(),
         ]);
 
         $response = $this->actingAs($admin)->getJson('/api/dashboard?period=bulan_ini');

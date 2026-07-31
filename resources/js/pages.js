@@ -226,7 +226,14 @@ const products = (rows, kategoriMap, isAdmin) => ({
 });
 
 const income = (rows, produkAktif, produkById, penggunaById, currentUserId) => ({
-    rows,
+    rows: (rows || []).map((r) => ({
+        ...r,
+        jumlah_diretur: r.jumlah_diretur ?? 0,
+        sisa_retur: r.sisa_retur ?? r.jumlah,
+        status: r.status ?? (r.dihapus_pada ? 'gagal' : 'berhasil'),
+        status_label: r.status_label ?? (r.dihapus_pada ? 'Gagal' : 'Berhasil'),
+        retur_history: r.retur_history ?? [],
+    })),
     produkAktif,
     produkById,
     penggunaById,
@@ -239,6 +246,12 @@ const income = (rows, produkAktif, produkById, penggunaById, currentUserId) => (
     deleteTarget: null,
     toast: '',
     saving: false,
+    expandedId: null,
+    returModalOpen: false,
+    returTarget: null,
+    returForm: {},
+    returErrors: {},
+    returSaving: false,
 
     get visibleRows() {
         if (!this.search.trim()) {
@@ -246,7 +259,17 @@ const income = (rows, produkAktif, produkById, penggunaById, currentUserId) => (
         }
         const q = this.search.toLowerCase();
 
-        return this.rows.filter((r) => `${this.produkNama(r.id_produk)} ${r.tanggal_transaksi} ${r.jenis_transaksi || ''}`.toLowerCase().includes(q));
+        return this.rows.filter((r) => `${this.produkNama(r.id_produk)} ${r.tanggal_transaksi} ${r.jenis_transaksi || ''} ${r.status_label || ''}`.toLowerCase().includes(q));
+    },
+
+    get returMax() {
+        if (!this.returTarget) return 0;
+        return Math.max(0, Number(this.returTarget.sisa_retur ?? this.returTarget.jumlah) || 0);
+    },
+
+    get returNominalPreview() {
+        if (!this.returTarget) return 0;
+        return (Number(this.returForm.jumlah) || 0) * (Number(this.returTarget.harga_satuan) || 0);
     },
 
     produkNama(id) {
@@ -255,6 +278,24 @@ const income = (rows, produkAktif, produkById, penggunaById, currentUserId) => (
 
     pencatatNama(id) {
         return this.penggunaById[id]?.nama ?? '—';
+    },
+
+    statusLabel(row) {
+        if (row.dihapus_pada) return 'Gagal';
+        return row.status_label || 'Berhasil';
+    },
+
+    statusBadgeClass(row) {
+        const status = row.dihapus_pada ? 'gagal' : row.status;
+        if (status === 'gagal') return 'badge-soft-delete';
+        if (status === 'semua_diretur') return 'badge-info-soft';
+        if (status === 'retur_sebagian') return 'badge-warning-soft';
+        return 'badge-success-soft';
+    },
+
+    toggleExpand(row) {
+        if (!(row.retur_history?.length > 0)) return;
+        this.expandedId = this.expandedId === row.id ? null : row.id;
     },
 
     selectedProduct() {
@@ -330,6 +371,86 @@ const income = (rows, produkAktif, produkById, penggunaById, currentUserId) => (
         this.modalOpen = true;
     },
 
+    openRetur(row) {
+        const sisa = Math.max(0, Number(row.sisa_retur ?? row.jumlah) || 0);
+        if (sisa < 1) {
+            this.toast = 'Tidak ada sisa yang bisa diretur.';
+            this.dismissToast();
+            return;
+        }
+        this.returTarget = row;
+        this.returForm = {
+            tanggal: todayStr(),
+            jumlah: sisa,
+            alasan: '',
+        };
+        this.returErrors = {};
+        this.returModalOpen = true;
+    },
+
+    async saveRetur() {
+        if (!this.returTarget) return;
+        this.returErrors = {};
+        this.returSaving = true;
+        const qty = Number(this.returForm.jumlah);
+        if (qty < 1 || qty > this.returMax) {
+            this.returErrors = { jumlah: `Jumlah retur harus antara 1 dan ${this.returMax}.` };
+            this.returSaving = false;
+            return;
+        }
+
+        const body = JSON.stringify({
+            id_penjualan: this.returTarget.id,
+            tanggal: this.returForm.tanggal,
+            jumlah: qty,
+            alasan: this.returForm.alasan,
+        });
+        const res = await apiFetch('/sales-returns', { method: 'POST', body });
+        this.returSaving = false;
+
+        if (!res.success) {
+            if (res.errors) {
+                this.returErrors = Object.fromEntries(Object.entries(res.errors).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v]));
+            } else {
+                this.returErrors = { jumlah: res.message || 'Gagal menyimpan retur.' };
+            }
+            return;
+        }
+
+        const idx = this.rows.findIndex((r) => r.id === this.returTarget.id);
+        if (idx >= 0) {
+            const row = this.rows[idx];
+            const history = [...(row.retur_history || [])];
+            if (res.resource) {
+                history.unshift({
+                    id: res.resource.id,
+                    tanggal: res.resource.tanggal,
+                    jumlah: res.resource.jumlah,
+                    nominal_retur: res.resource.nominal_retur,
+                    alasan: res.resource.alasan,
+                    dibuat_pada: res.resource.dibuat_pada,
+                });
+            }
+            const jumlahDiretur = res.income?.jumlah_diretur ?? (Number(row.jumlah_diretur || 0) + qty);
+            const sisaRetur = res.income?.sisa_retur ?? Math.max(0, Number(row.jumlah) - jumlahDiretur);
+            Object.assign(row, {
+                jumlah_diretur: jumlahDiretur,
+                sisa_retur: sisaRetur,
+                status: res.income?.status ?? (sisaRetur <= 0 ? 'semua_diretur' : 'retur_sebagian'),
+                status_label: res.income?.status_label ?? (sisaRetur <= 0 ? 'Semua di retur' : 'Retur sebagian'),
+                retur_history: history,
+            });
+            if (row.id_produk && this.produkById[row.id_produk]) {
+                this.produkById[row.id_produk].stok = (this.produkById[row.id_produk].stok || 0) + qty;
+            }
+        }
+
+        this.returModalOpen = false;
+        this.returTarget = null;
+        this.toast = 'Retur dicatat.';
+        this.dismissToast();
+    },
+
     async save() {
         this.errors = {};
         this.saving = true;
@@ -362,8 +483,15 @@ const income = (rows, produkAktif, produkById, penggunaById, currentUserId) => (
             if (idx >= 0) Object.assign(this.rows[idx], res.resource);
             this.toast = 'Transaksi pemasukan diperbarui.';
         } else {
-            this.rows.unshift(res.resource);
-            // refresh stok di map produk client-side
+            const resource = {
+                ...res.resource,
+                jumlah_diretur: 0,
+                sisa_retur: res.resource.jumlah,
+                status: 'berhasil',
+                status_label: 'Berhasil',
+                retur_history: [],
+            };
+            this.rows.unshift(resource);
             if (res.resource?.id_produk && this.produkById[res.resource.id_produk]) {
                 const p = this.produkById[res.resource.id_produk];
                 p.stok = Math.max(0, (p.stok || 0) - Number(res.resource.jumlah || 0));
@@ -388,6 +516,8 @@ const income = (rows, produkAktif, produkById, penggunaById, currentUserId) => (
             return;
         }
         this.deleteTarget.dihapus_pada = nowStr();
+        this.deleteTarget.status = 'gagal';
+        this.deleteTarget.status_label = 'Gagal';
         this.toast = 'Transaksi dihapus (soft delete).';
         this.deleteTarget = null;
         this.dismissToast();
@@ -815,17 +945,30 @@ const salesReturns = (rows, currentUser) => ({
     deleteTarget: null,
     toast: '',
 
+    init() {
+        const params = new URLSearchParams(window.location.search);
+        const incomeId = params.get('income_id');
+        if (incomeId) {
+            this.openAdd(incomeId);
+        }
+    },
+
     get visibleRows() {
         if (!this.search.trim()) {
             return this.rows;
         }
         const q = this.search.toLowerCase();
 
-        return this.rows.filter((r) => `${r.tanggal || ''} ${r.id_penjualan} ${r.alasan || ''}`.toLowerCase().includes(q));
+        return this.rows.filter((r) => `${r.tanggal || ''} ${r.id_penjualan} ${r.nama_produk || ''} ${r.alasan || ''}`.toLowerCase().includes(q));
     },
 
-    openAdd() {
-        this.form = { id_penjualan: '', tanggal: todayStr(), jumlah: 1, alasan: '' };
+    openAdd(incomeId = '') {
+        this.form = {
+            id_penjualan: incomeId ? String(incomeId) : '',
+            tanggal: todayStr(),
+            jumlah: 1,
+            alasan: '',
+        };
         this.errors = {};
         this.modalOpen = true;
     },
@@ -871,7 +1014,7 @@ const salesReturns = (rows, currentUser) => ({
             return;
         }
         this.deleteTarget.dihapus_pada = nowStr();
-        this.toast = 'Retur dihapus.';
+        this.toast = 'Retur dihapus; stok dikurangi kembali.';
         this.deleteTarget = null;
         this.dismissToast();
     },
