@@ -56,7 +56,7 @@
         </div>
         <div class="col-md-6 col-xl-3 d-flex">
             <button type="button" class="stat-card stat-card--cashflow w-100" aria-label="Arus Kas Bersih (bukan laba)" title="Total uang masuk (penjualan + modal) − seluruh kas keluar. Bukan laba.">
-                <span class="stat-card__label">Arus Kas Bersih <span class="stat-card__not-laba">◔</span></span>
+                <span class="stat-card__label">Arus Kas Bersih</span>
                 <span class="stat-card__value tnum" x-text="fmt(summary.arusKasBersih ?? 0)"></span>
                 <span class="stat-card__hint">Kas masuk (penjualan + modal) − kas keluar</span>
             </button>

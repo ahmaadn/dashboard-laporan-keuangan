@@ -1,4 +1,5 @@
 import Alpine from 'alpinejs';
+import { Offcanvas } from 'bootstrap';
 
 function rupiah(n) {
     return 'Rp ' + Number(n || 0).toLocaleString('id-ID');
@@ -927,12 +928,19 @@ const users = (rows, currentUser) => ({
 
 const reports = () => ({
     exportToast: '',
+    cashflowInstances: { offPendapatanBersih: null, offLabaKotor: null, offLabaBersih: null },
+
     doExport(kind) {
         const params = new URLSearchParams(window.location.search);
         const url = `/reports/export/${kind.toLowerCase()}?${params.toString()}`;
         window.location.href = url;
         this.exportToast = `Mengekspor ${kind}, mohon tunggu...`;
         setTimeout(() => (this.exportToast = ''), 2800);
+    },
+
+    openCashflow(id) {
+        this.cashflowInstances[id] ??= new Offcanvas(document.getElementById(id));
+        this.cashflowInstances[id].show();
     },
 });
 
