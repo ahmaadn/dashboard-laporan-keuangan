@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Resources\IncomeResource;
 use App\Models\Income;
 use App\Models\Product;
 use App\Models\User;
@@ -217,5 +218,125 @@ describe('income ownership', function () {
         $income = Income::factory()->create(['user_id' => $other->id]);
 
         $this->actingAs($pegawai)->deleteJson("/income/{$income->id}")->assertForbidden();
+    });
+});
+
+describe('multi-item cashier store', function () {
+    it('creates multiple income rows with shared nomor_transaksi', function () {
+        $pegawai = User::factory()->pegawai()->create();
+        $p1 = Product::factory()->create(['harga' => 100000, 'stok' => 10, 'harga_modal' => 40000, 'harga_grosir' => null]);
+        $p2 = Product::factory()->create(['harga' => 50000, 'stok' => 20, 'harga_modal' => 20000, 'harga_grosir' => null]);
+
+        $response = $this->actingAs($pegawai)->postJson('/income', [
+            'tanggal_transaksi' => today()->toDateString(),
+            'jenis_transaksi' => 'offline',
+            'keterangan' => 'Pelanggan tetap',
+            'items' => [
+                ['id_produk' => $p1->id, 'jumlah' => 2, 'harga_satuan' => 100000, 'harga_manual' => true],
+                ['id_produk' => $p2->id, 'jumlah' => 3, 'harga_satuan' => 50000, 'harga_manual' => true],
+            ],
+        ]);
+
+        $response->assertCreated();
+        expect($response->json('nomor_transaksi'))->toStartWith('TRX-');
+        $rows = Income::orderBy('id')->get();
+        expect($rows)->toHaveCount(2);
+        expect($rows->first()->nomor_transaksi)->toBe($rows->last()->nomor_transaksi);
+        expect($rows->first()->nomor_transaksi)->toBe($response->json('nomor_transaksi'));
+        expect((float) $rows[0]->total)->toBe(200000.0);
+        expect((float) $rows[1]->total)->toBe(150000.0);
+        expect($p1->fresh()->stok)->toBe(8);
+        expect($p2->fresh()->stok)->toBe(17);
+    });
+
+    it('rolls back all rows if any product has insufficient stock', function () {
+        $pegawai = User::factory()->pegawai()->create();
+        $p1 = Product::factory()->create(['stok' => 10]);
+        $p2 = Product::factory()->create(['stok' => 1]);
+
+        $response = $this->actingAs($pegawai)->postJson('/income', [
+            'tanggal_transaksi' => today()->toDateString(),
+            'jenis_transaksi' => 'offline',
+            'items' => [
+                ['id_produk' => $p1->id, 'jumlah' => 2, 'harga_satuan' => 100000, 'harga_manual' => true],
+                ['id_produk' => $p2->id, 'jumlah' => 5, 'harga_satuan' => 100000, 'harga_manual' => true],
+            ],
+        ]);
+
+        $response->assertStatus(422);
+        expect(Income::count())->toBe(0);
+        expect($p1->fresh()->stok)->toBe(10);
+        expect($p2->fresh()->stok)->toBe(1);
+    });
+
+    it('applies grosir per line item independently', function () {
+        $pegawai = User::factory()->pegawai()->create();
+        $p1 = Product::factory()->create([
+            'harga' => 100000, 'harga_grosir' => 90000, 'min_qty_grosir' => 3, 'stok' => 20,
+        ]);
+        $p2 = Product::factory()->create([
+            'harga' => 80000, 'harga_grosir' => 70000, 'min_qty_grosir' => 5, 'stok' => 20,
+        ]);
+
+        $this->actingAs($pegawai)->postJson('/income', [
+            'tanggal_transaksi' => today()->toDateString(),
+            'jenis_transaksi' => 'offline',
+            'items' => [
+                ['id_produk' => $p1->id, 'jumlah' => 5, 'harga_satuan' => 0],
+                ['id_produk' => $p2->id, 'jumlah' => 2, 'harga_satuan' => 0],
+            ],
+        ])->assertCreated();
+
+        $rows = Income::orderBy('id')->get();
+        $rowP1 = $rows->firstWhere('product_id', $p1->id);
+        $rowP2 = $rows->firstWhere('product_id', $p2->id);
+        expect($rowP1->harga_tipe)->toBe('grosir');
+        expect((float) $rowP1->harga_satuan)->toBe(90000.0);
+        expect($rowP2->harga_tipe)->toBe('eceran');
+        expect((float) $rowP2->harga_satuan)->toBe(80000.0);
+    });
+
+    it('rejects empty items array', function () {
+        $pegawai = User::factory()->pegawai()->create();
+
+        $this->actingAs($pegawai)->postJson('/income', [
+            'tanggal_transaksi' => today()->toDateString(),
+            'jenis_transaksi' => 'offline',
+            'items' => [],
+        ])->assertStatus(422);
+    });
+
+    it('increments nomor_transaksi across same day', function () {
+        $pegawai = User::factory()->pegawai()->create();
+        $product = Product::factory()->create(['stok' => 100, 'harga_grosir' => null]);
+
+        $this->actingAs($pegawai)->postJson('/income', [
+            'tanggal_transaksi' => today()->toDateString(),
+            'jenis_transaksi' => 'offline',
+            'items' => [
+                ['id_produk' => $product->id, 'jumlah' => 1, 'harga_satuan' => 50000, 'harga_manual' => true],
+            ],
+        ])->assertCreated();
+
+        $this->actingAs($pegawai)->postJson('/income', [
+            'tanggal_transaksi' => today()->toDateString(),
+            'jenis_transaksi' => 'offline',
+            'items' => [
+                ['id_produk' => $product->id, 'jumlah' => 1, 'harga_satuan' => 50000, 'harga_manual' => true],
+            ],
+        ])->assertCreated();
+
+        $nums = Income::orderBy('id')->pluck('nomor_transaksi')->unique()->values();
+        expect($nums)->toHaveCount(2);
+        expect($nums[1])->not->toBe($nums[0]);
+    });
+});
+
+describe('nomor_transaksi field', function () {
+    it('exposes nomor_transaksi on the resource', function () {
+        $income = Income::factory()->create(['nomor_transaksi' => 'TRX-TEST-0001']);
+        $payload = (new IncomeResource($income))->resolve();
+
+        expect($payload['nomor_transaksi'])->toBe('TRX-TEST-0001');
     });
 });

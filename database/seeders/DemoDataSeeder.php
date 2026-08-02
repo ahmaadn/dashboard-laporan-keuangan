@@ -221,6 +221,7 @@ class DemoDataSeeder extends Seeder
         }
 
         $income = Income::create([
+            'nomor_transaksi' => Income::generateNomorTransaksi(),
             'product_id' => $product->id,
             'user_id' => $recorder->id,
             'tanggal_transaksi' => $date->toDateString(),
@@ -244,7 +245,7 @@ class DemoDataSeeder extends Seeder
             'jumlah' => -$jumlah,
             'sumber' => 'penjualan',
             'ref_id' => $income->id,
-            'keterangan' => 'Penjualan #'.$income->id,
+            'keterangan' => 'Penjualan '.$income->nomor_transaksi,
         ]);
     }
 

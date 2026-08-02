@@ -14,6 +14,7 @@ use App\Services\StockService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
 
 class IncomeController extends Controller
 {
@@ -37,6 +38,15 @@ class IncomeController extends Controller
 
     public function store(IncomeRequest $request): JsonResponse
     {
+        if ($request->isMultiItem()) {
+            return $this->storeMulti($request);
+        }
+
+        return $this->storeSingle($request);
+    }
+
+    private function storeSingle(IncomeRequest $request): JsonResponse
+    {
         $mapped = $request->mapped();
         $hargaManual = (bool) ($mapped['harga_manual'] ?? false);
         unset($mapped['harga_manual']);
@@ -45,12 +55,7 @@ class IncomeController extends Controller
         if ($mapped['product_id']) {
             $product = Product::findOrFail($mapped['product_id']);
             if ((int) $mapped['jumlah'] > (int) $product->stok) {
-                return response()->json([
-                    'message' => 'Stok tidak mencukupi, sisa '.(int) $product->stok.'.',
-                    'errors' => [
-                        'jumlah' => ['Stok tidak mencukupi, sisa '.(int) $product->stok.'.'],
-                    ],
-                ], 422);
+                return $this->stockInsufficientResponse((int) $product->stok);
             }
         }
 
@@ -63,8 +68,10 @@ class IncomeController extends Controller
             }
 
             $pricing = $this->resolvePricing($product, $mapped['jenis_transaksi'], (int) $mapped['jumlah'], (float) $mapped['harga_satuan'], $hargaManual);
+            $nomor = Income::generateNomorTransaksi();
 
             $income = Income::create([
+                'nomor_transaksi' => $nomor,
                 'product_id' => $mapped['product_id'],
                 'user_id' => $request->user()->id,
                 'tanggal_transaksi' => $mapped['tanggal_transaksi'],
@@ -83,7 +90,7 @@ class IncomeController extends Controller
                     (int) $mapped['jumlah'],
                     'penjualan',
                     $income->id,
-                    'Penjualan #'.$income->id,
+                    'Penjualan '.$nomor,
                     $request->user()->id,
                     $mapped['tanggal_transaksi'],
                 );
@@ -95,17 +102,135 @@ class IncomeController extends Controller
         if ($income === null) {
             $sisa = $product ? (int) $product->fresh()->stok : 0;
 
-            return response()->json([
-                'message' => 'Stok tidak mencukupi, sisa '.$sisa.'.',
-                'errors' => [
-                    'jumlah' => ['Stok tidak mencukupi, sisa '.$sisa.'.'],
-                ],
-            ], 422);
+            return $this->stockInsufficientResponse($sisa);
         }
 
         return response()->json([
             'success' => true,
             'resource' => IncomeResource::make($income->fresh()->load('salesReturns'))->resolve(),
+        ], 201);
+    }
+
+    private function storeMulti(IncomeRequest $request): JsonResponse
+    {
+        $mapped = $request->mapped();
+        /** @var list<array{product_id: ?int, jumlah: int, harga_satuan: float, total: float, harga_manual: bool}> $items */
+        $items = $mapped['items'];
+
+        $qtyByProduct = [];
+        foreach ($items as $index => $item) {
+            if ($item['product_id'] === null) {
+                continue;
+            }
+            $qtyByProduct[$item['product_id']] = ($qtyByProduct[$item['product_id']] ?? 0) + $item['jumlah'];
+        }
+
+        foreach ($qtyByProduct as $productId => $qty) {
+            $product = Product::find($productId);
+            if (! $product) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Produk tidak ditemukan.',
+                    'errors' => ['items' => ['Produk tidak ditemukan.']],
+                ], 422);
+            }
+            if ($qty > (int) $product->stok) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Stok {$product->nama} tidak mencukupi, sisa ".(int) $product->stok.'.',
+                    'errors' => [
+                        'items' => ["Stok {$product->nama} tidak mencukupi, sisa ".(int) $product->stok.'.'],
+                    ],
+                ], 422);
+            }
+        }
+
+        try {
+            $created = DB::transaction(function () use ($request, $mapped, $items, $qtyByProduct) {
+                $locked = [];
+                foreach (array_keys($qtyByProduct) as $productId) {
+                    $product = Product::lockForUpdate()->findOrFail($productId);
+                    $needed = $qtyByProduct[$productId];
+                    if ($needed > (int) $product->stok) {
+                        throw new RuntimeException('STOCK:'.$product->nama.':'.(int) $product->stok);
+                    }
+                    $locked[$productId] = $product;
+                }
+
+                $nomor = Income::generateNomorTransaksi();
+                $incomes = [];
+
+                foreach ($items as $item) {
+                    $product = $item['product_id'] ? $locked[$item['product_id']] : null;
+                    $pricing = $this->resolvePricing(
+                        $product,
+                        $mapped['jenis_transaksi'],
+                        $item['jumlah'],
+                        $item['harga_satuan'],
+                        $item['harga_manual'],
+                    );
+
+                    $income = Income::create([
+                        'nomor_transaksi' => $nomor,
+                        'product_id' => $item['product_id'],
+                        'user_id' => $request->user()->id,
+                        'tanggal_transaksi' => $mapped['tanggal_transaksi'],
+                        'jenis_transaksi' => $mapped['jenis_transaksi'],
+                        'jumlah' => $item['jumlah'],
+                        'harga_satuan' => $pricing['harga'],
+                        'hpp_satuan' => $product ? (float) $product->harga_modal : 0,
+                        'harga_tipe' => $pricing['tipe'],
+                        'total' => $item['jumlah'] * $pricing['harga'],
+                        'keterangan' => $mapped['keterangan'],
+                    ]);
+
+                    if ($product) {
+                        $this->stock->catatKeluar(
+                            $product,
+                            $item['jumlah'],
+                            'penjualan',
+                            $income->id,
+                            'Penjualan '.$nomor,
+                            $request->user()->id,
+                            $mapped['tanggal_transaksi'],
+                        );
+                        $product->refresh();
+                        $locked[$product->id] = $product;
+                    }
+
+                    $incomes[] = $income->fresh()->load('salesReturns');
+                }
+
+                return $incomes;
+            });
+        } catch (RuntimeException $e) {
+            if (str_starts_with($e->getMessage(), 'STOCK:')) {
+                $parts = explode(':', $e->getMessage(), 3);
+                $nama = $parts[1] ?? 'Produk';
+                $sisa = (int) ($parts[2] ?? 0);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => "Stok {$nama} tidak mencukupi, sisa {$sisa}.",
+                    'errors' => [
+                        'items' => ["Stok {$nama} tidak mencukupi, sisa {$sisa}."],
+                    ],
+                ], 422);
+            }
+
+            throw $e;
+        }
+
+        $resources = collect($created)
+            ->map(fn (Income $income) => IncomeResource::make($income)->resolve())
+            ->values()
+            ->all();
+
+        return response()->json([
+            'success' => true,
+            'nomor_transaksi' => $resources[0]['nomor_transaksi'] ?? null,
+            'resources' => $resources,
+            'resource' => $resources[0] ?? null,
         ], 201);
     }
 
@@ -115,6 +240,13 @@ class IncomeController extends Controller
 
         if ($income->trashed()) {
             return response()->json(['success' => false, 'message' => 'Transaksi yang sudah dihapus tidak dapat diubah.'], 422);
+        }
+
+        if ($request->isMultiItem()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ubah transaksi hanya untuk satu baris item.',
+            ], 422);
         }
 
         $mapped = $request->mapped();
@@ -145,7 +277,7 @@ class IncomeController extends Controller
                 if ($mapped['product_id']) {
                     $product = Product::lockForUpdate()->findOrFail($mapped['product_id']);
                     if ((int) $mapped['jumlah'] > (int) $product->stok) {
-                        throw new \RuntimeException('STOCK:'.(int) $product->stok);
+                        throw new RuntimeException('STOCK:'.(int) $product->stok);
                     }
                 }
 
@@ -169,7 +301,7 @@ class IncomeController extends Controller
                         (int) $mapped['jumlah'],
                         'penjualan',
                         $income->id,
-                        'Penjualan #'.$income->id,
+                        'Penjualan '.($income->nomor_transaksi ?? '#'.$income->id),
                         $request->user()->id,
                         $mapped['tanggal_transaksi'],
                     );
@@ -177,14 +309,11 @@ class IncomeController extends Controller
 
                 return $income;
             });
-        } catch (\RuntimeException $e) {
+        } catch (RuntimeException $e) {
             if (str_starts_with($e->getMessage(), 'STOCK:')) {
                 $sisa = (int) substr($e->getMessage(), 6);
 
-                return response()->json([
-                    'message' => 'Stok tidak mencukupi, sisa '.$sisa.'.',
-                    'errors' => ['jumlah' => ['Stok tidak mencukupi, sisa '.$sisa.'.']],
-                ], 422);
+                return $this->stockInsufficientResponse($sisa);
             }
 
             throw $e;
@@ -232,5 +361,15 @@ class IncomeController extends Controller
         }
 
         return $product->hargaUntuk($jenis, $qty);
+    }
+
+    private function stockInsufficientResponse(int $sisa): JsonResponse
+    {
+        return response()->json([
+            'message' => 'Stok tidak mencukupi, sisa '.$sisa.'.',
+            'errors' => [
+                'jumlah' => ['Stok tidak mencukupi, sisa '.$sisa.'.'],
+            ],
+        ], 422);
     }
 }

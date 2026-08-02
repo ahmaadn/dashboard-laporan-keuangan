@@ -16,6 +16,7 @@ class Income extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
+        'nomor_transaksi',
         'product_id',
         'user_id',
         'tanggal_transaksi',
@@ -38,6 +39,28 @@ class Income extends Model
             'total' => 'decimal:2',
             'deleted_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Generate nomor struk harian (TRX-YYYYMMDD-0001).
+     * Harus dipanggil di dalam DB::transaction() agar lock aman.
+     */
+    public static function generateNomorTransaksi(): string
+    {
+        $prefix = 'TRX-'.now()->format('Ymd').'-';
+
+        $last = static::withTrashed()
+            ->where('nomor_transaksi', 'like', $prefix.'%')
+            ->lockForUpdate()
+            ->orderByDesc('nomor_transaksi')
+            ->value('nomor_transaksi');
+
+        $seq = 1;
+        if (is_string($last) && preg_match('/-(\d+)$/', $last, $m)) {
+            $seq = (int) $m[1] + 1;
+        }
+
+        return $prefix.str_pad((string) $seq, 4, '0', STR_PAD_LEFT);
     }
 
     /** @return BelongsTo<Product, $this> */

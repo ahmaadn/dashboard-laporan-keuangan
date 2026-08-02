@@ -294,6 +294,8 @@
     overflow: hidden;
 }
 .ld-table-wrap__scroll { overflow-x: auto; }
+.ld-table-wrap__scroll .ld-data-table--scroll-x { min-width: 1100px; }
+.ld-data-table--scroll-x th, .ld-data-table--scroll-x td { white-space: nowrap; }
 
 /* --- Badges --- */
 .badge-neutral {

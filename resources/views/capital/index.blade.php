@@ -8,7 +8,7 @@
 @endpush
 
 @section('content')
-    <div x-data="capital(@js($modal), @js($currentUser))">
+    <div x-data="capital(@js($modal), @js($penggunaById), @js($currentUser))">
 
         <x-page-header eyebrow="Pembiayaan" title="Modal / Setoran Pemilik">
             <x-slot:actions>

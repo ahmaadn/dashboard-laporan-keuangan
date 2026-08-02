@@ -6,6 +6,7 @@ use App\Http\Requests\CapitalInjectionRequest;
 use App\Http\Resources\CapitalInjectionResource;
 use App\Http\Resources\UserResource;
 use App\Models\CapitalInjection;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -14,9 +15,11 @@ class CapitalController extends Controller
     public function index(Request $request)
     {
         $capital = CapitalInjection::orderByDesc('tanggal')->get();
+        $allUsers = User::withTrashed()->get();
 
         return view('capital.index', [
             'modal' => CapitalInjectionResource::collection($capital)->resolve(),
+            'penggunaById' => collect(UserResource::collection($allUsers)->resolve())->keyBy('id')->all(),
             'currentUser' => $request->user() ? UserResource::make($request->user())->resolve() : null,
         ]);
     }

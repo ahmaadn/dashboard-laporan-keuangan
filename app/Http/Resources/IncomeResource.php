@@ -33,6 +33,7 @@ class IncomeResource extends JsonResource
 
         return [
             'id' => $this->id,
+            'nomor_transaksi' => $this->nomor_transaksi,
             'id_produk' => $this->product_id,
             'tanggal_transaksi' => $this->tanggal_transaksi?->format('Y-m-d'),
             'jenis_transaksi' => $jenis?->value ?? 'offline',

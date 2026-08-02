@@ -242,6 +242,8 @@ const income = (rows, produkAktif, produkById, penggunaById, currentUserId) => (
     modalOpen: false,
     editingId: null,
     form: {},
+    cart: [],
+    cartDraft: {},
     errors: {},
     deleteTarget: null,
     toast: '',
@@ -259,7 +261,9 @@ const income = (rows, produkAktif, produkById, penggunaById, currentUserId) => (
         }
         const q = this.search.toLowerCase();
 
-        return this.rows.filter((r) => `${this.produkNama(r.id_produk)} ${r.tanggal_transaksi} ${r.jenis_transaksi || ''} ${r.status_label || ''}`.toLowerCase().includes(q));
+        return this.rows.filter((r) =>
+            `${this.produkNama(r.id_produk)} ${r.nomor_transaksi || ''} ${r.tanggal_transaksi} ${r.jenis_transaksi || ''} ${r.status_label || ''}`.toLowerCase().includes(q),
+        );
     },
 
     get returMax() {
@@ -270,6 +274,41 @@ const income = (rows, produkAktif, produkById, penggunaById, currentUserId) => (
     get returNominalPreview() {
         if (!this.returTarget) return 0;
         return (Number(this.returForm.jumlah) || 0) * (Number(this.returTarget.harga_satuan) || 0);
+    },
+
+    get cartTotal() {
+        return this.cart.reduce((sum, line) => sum + (Number(line.jumlah) || 0) * (Number(line.harga_satuan) || 0), 0);
+    },
+
+    get computedTotal() {
+        if (this.editingId) {
+            return (Number(this.form.jumlah) || 0) * (Number(this.form.harga_satuan) || 0);
+        }
+        return this.cartTotal;
+    },
+
+    get draftHargaTipe() {
+        if (this.cartDraft.harga_manual) return 'manual';
+        const p = this.draftProduct();
+        if (!p) return 'manual';
+        const qty = Number(this.cartDraft.jumlah) || 0;
+        const min = Number(p.min_qty_grosir || 3);
+        if (this.form.jenis_transaksi === 'offline' && qty >= min && p.harga_grosir) {
+            return 'grosir';
+        }
+        return 'eceran';
+    },
+
+    get hargaTipePreview() {
+        if (this.form.harga_manual) return 'manual';
+        const p = this.selectedProduct();
+        if (!p) return 'manual';
+        const qty = Number(this.form.jumlah) || 0;
+        const min = Number(p.min_qty_grosir || 3);
+        if (this.form.jenis_transaksi === 'offline' && qty >= min && p.harga_grosir) {
+            return 'grosir';
+        }
+        return 'eceran';
     },
 
     produkNama(id) {
@@ -302,33 +341,50 @@ const income = (rows, produkAktif, produkById, penggunaById, currentUserId) => (
         return this.produkAktif.find((x) => x.id === Number(this.form.id_produk)) || null;
     },
 
-    get hargaTipePreview() {
-        if (this.form.harga_manual) return 'manual';
-        const p = this.selectedProduct();
-        if (!p) return 'manual';
-        const qty = Number(this.form.jumlah) || 0;
-        const min = Number(p.min_qty_grosir || 3);
-        if (this.form.jenis_transaksi === 'offline' && qty >= min && p.harga_grosir) {
-            return 'grosir';
-        }
-        return 'eceran';
+    draftProduct() {
+        return this.produkAktif.find((x) => x.id === Number(this.cartDraft.id_produk)) || null;
     },
 
-    get computedTotal() {
-        return (Number(this.form.jumlah) || 0) * (Number(this.form.harga_satuan) || 0);
+    cartLineProduct(line) {
+        return this.produkById[line.id_produk] || this.produkAktif.find((x) => x.id === Number(line.id_produk)) || null;
+    },
+
+    cartLineNama(line) {
+        if (!line.id_produk) return 'Tanpa produk (lain-lain)';
+        return this.produkNama(line.id_produk);
+    },
+
+    cartLineSubtotal(line) {
+        return (Number(line.jumlah) || 0) * (Number(line.harga_satuan) || 0);
+    },
+
+    emptyCartDraft() {
+        return {
+            id_produk: '',
+            jumlah: 1,
+            harga_satuan: 0,
+            harga_manual: false,
+        };
+    },
+
+    applyAutoPriceTo(target) {
+        if (target.harga_manual) return;
+        const p = this.produkAktif.find((x) => x.id === Number(target.id_produk));
+        if (!p) {
+            if (!target.harga_manual) target.harga_satuan = 0;
+            return;
+        }
+        const qty = Number(target.jumlah) || 0;
+        const min = Number(p.min_qty_grosir || 3);
+        if (this.form.jenis_transaksi === 'offline' && qty >= min && p.harga_grosir) {
+            target.harga_satuan = p.harga_grosir;
+        } else {
+            target.harga_satuan = p.harga;
+        }
     },
 
     applyAutoPrice() {
-        if (this.form.harga_manual) return;
-        const p = this.selectedProduct();
-        if (!p) return;
-        const qty = Number(this.form.jumlah) || 0;
-        const min = Number(p.min_qty_grosir || 3);
-        if (this.form.jenis_transaksi === 'offline' && qty >= min && p.harga_grosir) {
-            this.form.harga_satuan = p.harga_grosir;
-        } else {
-            this.form.harga_satuan = p.harga;
-        }
+        this.applyAutoPriceTo(this.form);
     },
 
     onProductChange() {
@@ -337,6 +393,77 @@ const income = (rows, produkAktif, produkById, penggunaById, currentUserId) => (
 
     onPricingInputsChange() {
         this.applyAutoPrice();
+        if (!this.editingId) {
+            this.cart.forEach((line) => this.applyAutoPriceTo(line));
+            this.applyAutoPriceTo(this.cartDraft);
+        }
+    },
+
+    onDraftProductChange() {
+        this.applyAutoPriceTo(this.cartDraft);
+    },
+
+    onDraftPricingChange() {
+        this.applyAutoPriceTo(this.cartDraft);
+    },
+
+    onCartLinePricingChange(index) {
+        this.applyAutoPriceTo(this.cart[index]);
+    },
+
+    availableProductsForDraft() {
+        const used = new Set(this.cart.map((l) => Number(l.id_produk)).filter(Boolean));
+        return this.produkAktif.filter((p) => !used.has(Number(p.id)) || Number(this.cartDraft.id_produk) === Number(p.id));
+    },
+
+    addCartLine() {
+        const idProduk = this.cartDraft.id_produk ? Number(this.cartDraft.id_produk) : null;
+        const jumlah = Number(this.cartDraft.jumlah) || 0;
+        const harga = Number(this.cartDraft.harga_satuan) || 0;
+        const hargaManual = !!this.cartDraft.harga_manual;
+
+        if (jumlah < 1) {
+            this.errors = { ...this.errors, cart: 'Jumlah minimal 1.' };
+            return;
+        }
+        if (!idProduk && !hargaManual) {
+            this.errors = { ...this.errors, cart: 'Pilih produk atau aktifkan harga manual.' };
+            return;
+        }
+        if (!idProduk && harga <= 0) {
+            this.errors = { ...this.errors, cart: 'Isi harga untuk item tanpa produk.' };
+            return;
+        }
+
+        if (idProduk) {
+            const existing = this.cart.findIndex((l) => Number(l.id_produk) === idProduk);
+            if (existing >= 0) {
+                const line = this.cart[existing];
+                line.jumlah = Number(line.jumlah) + jumlah;
+                if (hargaManual) {
+                    line.harga_manual = true;
+                    line.harga_satuan = harga;
+                } else {
+                    this.applyAutoPriceTo(line);
+                }
+                this.cartDraft = this.emptyCartDraft();
+                delete this.errors.cart;
+                return;
+            }
+        }
+
+        this.cart.push({
+            id_produk: idProduk || '',
+            jumlah,
+            harga_satuan: harga,
+            harga_manual: hargaManual || !idProduk,
+        });
+        this.cartDraft = this.emptyCartDraft();
+        delete this.errors.cart;
+    },
+
+    removeCartLine(index) {
+        this.cart.splice(index, 1);
     },
 
     rupiah(n) {
@@ -346,14 +473,12 @@ const income = (rows, produkAktif, produkById, penggunaById, currentUserId) => (
     openAdd() {
         this.editingId = null;
         this.form = {
-            id_produk: '',
             tanggal_transaksi: todayStr(),
             jenis_transaksi: 'offline',
-            jumlah: 1,
-            harga_satuan: 0,
-            harga_manual: false,
             keterangan: '',
         };
+        this.cart = [];
+        this.cartDraft = this.emptyCartDraft();
         this.errors = {};
         this.modalOpen = true;
     },
@@ -367,6 +492,8 @@ const income = (rows, produkAktif, produkById, penggunaById, currentUserId) => (
             jenis_transaksi: row.jenis_transaksi || 'offline',
             harga_manual: row.harga_tipe === 'manual',
         };
+        this.cart = [];
+        this.cartDraft = this.emptyCartDraft();
         this.errors = {};
         this.modalOpen = true;
     },
@@ -451,20 +578,68 @@ const income = (rows, produkAktif, produkById, penggunaById, currentUserId) => (
         this.dismissToast();
     },
 
+    normalizeRow(resource) {
+        return {
+            ...resource,
+            jumlah_diretur: resource.jumlah_diretur ?? 0,
+            sisa_retur: resource.sisa_retur ?? resource.jumlah,
+            status: resource.status ?? 'berhasil',
+            status_label: resource.status_label ?? 'Berhasil',
+            retur_history: resource.retur_history ?? [],
+        };
+    },
+
+    applyStockDelta(resource, sign) {
+        if (resource?.id_produk && this.produkById[resource.id_produk]) {
+            const p = this.produkById[resource.id_produk];
+            p.stok = Math.max(0, (p.stok || 0) + sign * Number(resource.jumlah || 0));
+        }
+        const aktif = this.produkAktif.find((x) => x.id === resource?.id_produk);
+        if (aktif) {
+            aktif.stok = Math.max(0, (aktif.stok || 0) + sign * Number(resource.jumlah || 0));
+        }
+    },
+
     async save() {
         this.errors = {};
         this.saving = true;
-        const url = this.editingId ? `/income/${this.editingId}` : '/income';
-        const method = this.editingId ? 'PUT' : 'POST';
-        const body = JSON.stringify({
-            id_produk: this.form.id_produk || null,
-            tanggal_transaksi: this.form.tanggal_transaksi,
-            jenis_transaksi: this.form.jenis_transaksi || 'offline',
-            jumlah: Number(this.form.jumlah),
-            harga_satuan: Number(this.form.harga_satuan),
-            harga_manual: !!this.form.harga_manual,
-            keterangan: this.form.keterangan,
-        });
+
+        let body;
+        let url;
+        let method;
+
+        if (this.editingId) {
+            url = `/income/${this.editingId}`;
+            method = 'PUT';
+            body = JSON.stringify({
+                id_produk: this.form.id_produk || null,
+                tanggal_transaksi: this.form.tanggal_transaksi,
+                jenis_transaksi: this.form.jenis_transaksi || 'offline',
+                jumlah: Number(this.form.jumlah),
+                harga_satuan: Number(this.form.harga_satuan),
+                harga_manual: !!this.form.harga_manual,
+                keterangan: this.form.keterangan,
+            });
+        } else {
+            if (this.cart.length === 0) {
+                this.errors = { cart: 'Tambahkan minimal satu produk ke keranjang.' };
+                this.saving = false;
+                return;
+            }
+            url = '/income';
+            method = 'POST';
+            body = JSON.stringify({
+                tanggal_transaksi: this.form.tanggal_transaksi,
+                jenis_transaksi: this.form.jenis_transaksi || 'offline',
+                keterangan: this.form.keterangan,
+                items: this.cart.map((line) => ({
+                    id_produk: line.id_produk || null,
+                    jumlah: Number(line.jumlah),
+                    harga_satuan: Number(line.harga_satuan),
+                    harga_manual: !!line.harga_manual,
+                })),
+            });
+        }
 
         const res = await apiFetch(url, { method, body });
         this.saving = false;
@@ -483,20 +658,16 @@ const income = (rows, produkAktif, produkById, penggunaById, currentUserId) => (
             if (idx >= 0) Object.assign(this.rows[idx], res.resource);
             this.toast = 'Transaksi pemasukan diperbarui.';
         } else {
-            const resource = {
-                ...res.resource,
-                jumlah_diretur: 0,
-                sisa_retur: res.resource.jumlah,
-                status: 'berhasil',
-                status_label: 'Berhasil',
-                retur_history: [],
-            };
-            this.rows.unshift(resource);
-            if (res.resource?.id_produk && this.produkById[res.resource.id_produk]) {
-                const p = this.produkById[res.resource.id_produk];
-                p.stok = Math.max(0, (p.stok || 0) - Number(res.resource.jumlah || 0));
-            }
-            this.toast = 'Transaksi pemasukan ditambahkan.';
+            const list = res.resources || (res.resource ? [res.resource] : []);
+            list
+                .slice()
+                .reverse()
+                .forEach((resource) => {
+                    this.rows.unshift(this.normalizeRow(resource));
+                    this.applyStockDelta(resource, -1);
+                });
+            const n = list.length;
+            this.toast = n > 1 ? `Transaksi ${res.nomor_transaksi || ''} · ${n} item ditambahkan.` : 'Transaksi pemasukan ditambahkan.';
         }
         this.modalOpen = false;
         this.dismissToast();
@@ -849,8 +1020,9 @@ const stocks = (produk, produkById, currentUser) => ({
     },
 });
 
-const capital = (rows, currentUser) => ({
+const capital = (rows, penggunaById, currentUser) => ({
     rows,
+    penggunaById,
     currentUser,
     isAdmin: currentUser?.peran === 'admin',
     search: '',
@@ -926,7 +1098,7 @@ const capital = (rows, currentUser) => ({
     },
 
     pencatatNama(id) {
-        return id ? ('Pencatat #' + id) : '—';
+        return id ? (this.penggunaById?.[id]?.nama ?? `Pencatat #${id}`) : '—';
     },
 
     dismissToast() {

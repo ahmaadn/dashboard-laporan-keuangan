@@ -19,6 +19,7 @@ class IncomeFactory extends Factory
         $hargaSatuan = fake()->numberBetween(50000, 500000);
 
         return [
+            'nomor_transaksi' => 'TRX-'.now()->format('YmdHis').'-'.fake()->numerify('####'),
             'product_id' => Product::factory(),
             'user_id' => User::factory(),
             'tanggal_transaksi' => fake()->dateTimeBetween('-1 year', 'now')->format('Y-m-d'),
