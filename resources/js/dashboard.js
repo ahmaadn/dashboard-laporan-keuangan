@@ -55,7 +55,7 @@ const dashboard = (produk, kategoriProduk, kategoriPengeluaran, pengguna) => {
     detail: { title: '', eyebrow: '', columns: [], rows: [], emptyText: 'Belum ada transaksi pada periode ini.' },
     offcanvasInst: null,
 
-    cashflowInstances: { offIncome: null, offExpense: null, offProfit: null },
+    cashflowInstances: { offIncome: null, offExpense: null, offProfit: null, offArusKas: null },
 
     modalDetail: { title: '', fields: [] },
     modalInst: null,

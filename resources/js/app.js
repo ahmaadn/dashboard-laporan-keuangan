@@ -4,6 +4,9 @@ import Alpine from 'alpinejs';
 import login from './components/login';
 import sidebar from './components/sidebar';
 
+// Import page-specific components to ensure they're registered before Alpine.start()
+import './pages';
+
 Alpine.data('login', login);
 Alpine.data('sidebar', sidebar);
 

@@ -490,6 +490,8 @@ a:focus-visible {
 .ld-nav-link:hover { background-color: var(--ld-canvas-paper); color: var(--ld-ink); }
 .ld-nav-link.is-active { background-color: var(--ld-ink); color: #fff; }
 .ld-nav-link.is-active .ld-nav-icon { color: #fff; }
+.ld-nav-link.is-active:hover { background-color: var(--ld-ink); color: #fff; }
+.ld-nav-link.is-active:hover .ld-nav-icon { color: #fff; }
 .ld-nav-icon { width: 18px; height: 18px; flex-shrink: 0; color: var(--ld-mute); }
 .ld-nav-link:hover .ld-nav-icon { color: var(--ld-ink); }
 .ld-sidebar__footer {

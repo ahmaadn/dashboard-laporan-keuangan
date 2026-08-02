@@ -928,7 +928,8 @@ const users = (rows, currentUser) => ({
 
 const reports = () => ({
     exportToast: '',
-    cashflowInstances: { offPendapatanBersih: null, offLabaKotor: null, offLabaBersih: null },
+    viewMode: 'simple',
+    cashflowInstances: { offPendapatanBersih: null, offLabaKotor: null, offLabaBersih: null, offArusKas: null },
 
     doExport(kind) {
         const params = new URLSearchParams(window.location.search);

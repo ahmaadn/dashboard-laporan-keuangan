@@ -54,11 +54,11 @@
                 <span class="stat-card__hint">Laba Kotor − Beban Operasional</span>
             </button>
         </div>
-        <div class="col-md-6 col-xl-3 d-flex">
-            <button type="button" class="stat-card stat-card--cashflow w-100" aria-label="Arus Kas Bersih (bukan laba)" title="Total uang masuk (penjualan + modal) − seluruh kas keluar. Bukan laba.">
-                <span class="stat-card__label">Arus Kas Bersih</span>
+<div class="col-md-6 col-xl-3 d-flex">
+            <button type="button" class="stat-card stat-card--cashflow w-100" @click="openCashflow('offArusKas')" aria-label="Arus Kas Bersih (bukan laba)" title="Total uang masuk (penjualan + modal) − seluruh kas keluar. Bukan laba. Klik untuk rincian.">
+                <span class="stat-card__label">Arus Kas Bersih <span class="stat-card__not-laba">◔</span></span>
                 <span class="stat-card__value tnum" x-text="fmt(summary.arusKasBersih ?? 0)"></span>
-                <span class="stat-card__hint">Kas masuk (penjualan + modal) − kas keluar</span>
+                <span class="stat-card__hint">Kas masuk (penjualan + modal) − kas keluar · klik rincian</span>
             </button>
         </div>
     </div>
@@ -394,6 +394,41 @@
                 Kas masuk: <span class="tnum" x-text="fmt(summary.arusKasMasuk ?? 0)"></span>
                 (penjualan + modal <span class="tnum" x-text="fmt(summary.modalTotal ?? 0)"></span>).
                 Kas keluar: <span class="tnum" x-text="fmt(summary.arusKasKeluar ?? 0)"></span>.
+            </p>
+        </div>
+    </x-offcanvas-detail>
+
+    {{-- Offcanvas: rincian Arus Kas Bersih --}}
+    <x-offcanvas-detail id="offArusKas" eyebrow="Rincian" title="Arus Kas Bersih">
+        <div class="d-flex flex-column gap-3">
+            <div class="d-flex justify-content-between">
+                <span class="ld-body-sm">Kas Masuk (Penjualan)</span>
+                <span class="tnum fw-medium" x-text="fmt(summary.arusKasMasuk ?? summary.income ?? 0)"></span>
+            </div>
+            <div class="d-flex justify-content-between">
+                <span class="ld-body-sm">+ Modal / Setoran Pemilik</span>
+                <span class="tnum fw-medium" x-text="fmt(summary.modalTotal ?? 0)"></span>
+            </div>
+            <hr class="my-1">
+            <div class="d-flex justify-content-between fw-medium">
+                <span>= Total Kas Masuk</span>
+                <span class="tnum" x-text="fmt((summary.arusKasMasuk ?? summary.income ?? 0) + (summary.modalTotal ?? 0))"></span>
+            </div>
+            <div class="d-flex justify-content-between text-danger">
+                <span class="ld-body-sm">− Pembelian Bahan Baku</span>
+                <span class="tnum fw-medium" x-text="'− ' + fmt(summary.pembelianBahanBaku ?? 0)"></span>
+            </div>
+            <div class="d-flex justify-content-between text-danger">
+                <span class="ld-body-sm">− Beban Operasional</span>
+                <span class="tnum fw-medium" x-text="'− ' + fmt(summary.biayaOperasional ?? 0)"></span>
+            </div>
+            <hr class="my-1">
+            <div class="d-flex justify-content-between fw-bold">
+                <span>= Arus Kas Bersih</span>
+                <span class="tnum" :class="(summary.arusKasBersih ?? 0) >= 0 ? 'text-success' : 'text-danger'" x-text="fmt(summary.arusKasBersih ?? 0)"></span>
+            </div>
+            <p class="ld-caption mb-0">
+                Arus kas menghitung uang riil keluar-masuk (termasuk modal). Bukan laba.
             </p>
         </div>
     </x-offcanvas-detail>
