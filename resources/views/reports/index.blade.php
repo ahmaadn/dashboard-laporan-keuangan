@@ -89,14 +89,6 @@
                     <span class="ld-body-sm">Penjualan (kotor)</span>
                     <span class="tnum fw-medium">@rupiah($report['penjualan'])</span>
                 </div>
-                <div class="d-flex justify-content-between text-danger">
-                    <span class="ld-body-sm">− Retur Penjualan</span>
-                    <span class="tnum fw-medium">@rupiah($report['returTotal'])</span>
-                </div>
-                <div class="d-flex justify-content-between">
-                    <span class="fw-medium">= Kas Masuk Penjualan</span>
-                    <span class="tnum fw-medium">@rupiah($report['pendapatanBersih'])</span>
-                </div>
                 <div class="d-flex justify-content-between">
                     <span class="ld-body-sm">+ Modal / Setoran Pemilik</span>
                     <span class="tnum fw-medium">@rupiah($report['modalTotal'])</span>

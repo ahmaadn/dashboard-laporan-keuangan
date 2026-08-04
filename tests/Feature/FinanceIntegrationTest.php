@@ -276,6 +276,69 @@ describe('arus kas bersih — retur uang keluar', function () {
         expect($response->json('summary.arusKasBersih'))->toBe(200000);
         expect($response->json('summary.returKeluar'))->toBe(100000);
     });
+
+    it('rantai aritmetika panel konsisten (no double counting)', function () {
+        // Mengunci hubungan antar metrik agar regresi "retur muncul dua kali" / modal
+        // dihitung dua kali terdeteksi otomatis.
+        $admin = User::factory()->admin()->create();
+        $product = Product::factory()->create(['harga' => 100000, 'harga_modal' => 40000]);
+        $ops = ExpenseCategory::factory()->create(['is_bahan_baku' => false]);
+        $bahan = ExpenseCategory::factory()->bahanBaku()->create();
+
+        $income = Income::factory()->create([
+            'product_id' => $product->id,
+            'user_id' => $admin->id,
+            'tanggal_transaksi' => AppTimezone::todayDateString(),
+            'jumlah' => 5,
+            'harga_satuan' => 100000,
+            'hpp_satuan' => 40000,
+            'total' => 500000,
+        ]);
+        SalesReturn::create([
+            'income_id' => $income->id,
+            'product_id' => $product->id,
+            'user_id' => $admin->id,
+            'tanggal' => AppTimezone::todayDateString(),
+            'jumlah' => 1,
+            'nominal_retur' => 100000,
+        ]);
+        CapitalInjection::create([
+            'user_id' => $admin->id,
+            'tanggal' => AppTimezone::todayDateString(),
+            'nominal' => 1000000,
+        ]);
+        Expense::factory()->create([
+            'category_id' => $bahan->id,
+            'user_id' => $admin->id,
+            'tanggal_transaksi' => AppTimezone::todayDateString(),
+            'nominal' => 50000,
+        ]);
+        Expense::factory()->create([
+            'category_id' => $ops->id,
+            'user_id' => $admin->id,
+            'tanggal_transaksi' => AppTimezone::todayDateString(),
+            'nominal' => 30000,
+        ]);
+
+        $s = $this->actingAs($admin)->getJson('/api/dashboard?period=bulan_ini')->json('summary');
+
+        // Laba rugi chain.
+        expect($s['pendapatanBersih'])->toBe($s['penjualan'] - $s['returTotal']); // 400000
+        expect($s['labaKotor'])->toBe($s['pendapatanBersih'] - $s['hpp']); // 240000
+        expect($s['labaBersih'])->toBe($s['labaKotor'] - $s['biayaOperasional']); // 210000
+
+        // Kas chain — kunci konsistensi: arusKasMasuk tidak termasuk retur,
+        // arusKasKeluar memuat retur tepat satu kali.
+        expect($s['arusKasMasuk'])->toBe($s['penjualan'] + $s['modalTotal']); // 1500000
+        expect($s['arusKasKeluar'])->toBe($s['pengeluaranKas'] + $s['returTotal']); // 180000
+        expect($s['arusKasBersih'])->toBe($s['arusKasMasuk'] - $s['arusKasKeluar']); // 1320000
+        expect($s['arusKasBersih'])->toBe(
+            ($s['penjualan'] + $s['modalTotal']) - ($s['pembelianBahanBaku'] + $s['biayaOperasional'] + $s['returTotal'])
+        );
+
+        // returKeluar harus sama dengan returTotal (tidak dobel).
+        expect($s['returKeluar'])->toBe($s['returTotal']);
+    });
 });
 
 describe('retur dari income yang di-soft-delete diabaikan', function () {

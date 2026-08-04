@@ -405,14 +405,6 @@
                 <span class="ld-body-sm">Penjualan (kotor)</span>
                 <span class="tnum fw-medium" x-text="fmt(summary.penjualan ?? 0)"></span>
             </div>
-            <div class="d-flex justify-content-between text-danger">
-                <span class="ld-body-sm">− Retur Penjualan</span>
-                <span class="tnum fw-medium" x-text="'− ' + fmt(summary.returTotal ?? 0)"></span>
-            </div>
-            <div class="d-flex justify-content-between">
-                <span class="fw-medium">= Kas Masuk Penjualan</span>
-                <span class="tnum fw-medium" x-text="fmt(summary.pendapatanBersih ?? 0)"></span>
-            </div>
             <div class="d-flex justify-content-between">
                 <span class="ld-body-sm">+ Modal / Setoran Pemilik</span>
                 <span class="tnum fw-medium" x-text="fmt(summary.modalTotal ?? 0)"></span>
