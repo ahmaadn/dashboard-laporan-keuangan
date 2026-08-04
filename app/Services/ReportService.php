@@ -31,7 +31,8 @@ use Carbon\CarbonInterface;
  * - pengeluaranKas       = pembelianBahanBaku + biayaOperasional
  * - modalTotal           = SUM(capital_injections.nominal)      [pembiayaan, bukan pendapatan]
  * - arusKasMasuk         = penjualan + modalTotal
- * - arusKasKeluar        = pengeluaranKas
+ * - returKeluar          = returTotal                             [uang dikembalikan ke pelanggan]
+ * - arusKasKeluar        = pengeluaranKas + returKeluar
  * - arusKasBersih        = arusKasMasuk - arusKasKeluar
  */
 final class ReportService
@@ -59,9 +60,11 @@ final class ReportService
             ->get();
 
         $returByProduct = SalesReturn::query()
-            ->whereBetween('tanggal', [$startSql, $endSql])
-            ->selectRaw('product_id, SUM(nominal_retur) as retur_nominal, SUM(jumlah) as retur_qty')
-            ->groupBy('product_id')
+            ->whereBetween('sales_returns.tanggal', [$startSql, $endSql])
+            ->join('incomes', 'incomes.id', '=', 'sales_returns.income_id')
+            ->whereNull('incomes.deleted_at')
+            ->selectRaw('sales_returns.product_id, SUM(sales_returns.nominal_retur) as retur_nominal, SUM(sales_returns.jumlah) as retur_qty')
+            ->groupBy('sales_returns.product_id')
             ->get()
             ->keyBy('product_id');
 
@@ -212,6 +215,7 @@ final class ReportService
      *   pengeluaranKas: float,
      *   labaBersih: float,
      *   modalTotal: float,
+     *   returKeluar: float,
      *   arusKasMasuk: float,
      *   arusKasKeluar: float,
      *   arusKasBersih: float
@@ -223,7 +227,13 @@ final class ReportService
 
         $penjualan = (float) Income::whereBetween('tanggal_transaksi', [$startSql, $endSql])->sum('total');
 
-        $returTotal = (float) SalesReturn::whereBetween('tanggal', [$startSql, $endSql])->sum('nominal_retur');
+        // Retur penjualan adalah pengurang pendapatan; jika income sumbernya di-soft-delete,
+        // retur ikut gugur (sejalan dengan filter incomes.deleted_at di query HPP retur di bawah).
+        $returTotal = (float) SalesReturn::query()
+            ->whereBetween('sales_returns.tanggal', [$startSql, $endSql])
+            ->join('incomes', 'incomes.id', '=', 'sales_returns.income_id')
+            ->whereNull('incomes.deleted_at')
+            ->sum('sales_returns.nominal_retur');
 
         $pendapatanBersih = $penjualan - $returTotal;
 
@@ -246,12 +256,12 @@ final class ReportService
 
         $pembelianBahanBaku = (float) Expense::query()
             ->whereBetween('tanggal_transaksi', [$startSql, $endSql])
-            ->whereHas('category', fn ($q) => $q->where('is_bahan_baku', true))
+            ->whereHas('category', fn ($q) => $q->withTrashed()->where('is_bahan_baku', true))
             ->sum('nominal');
 
         $biayaOperasional = (float) Expense::query()
             ->whereBetween('tanggal_transaksi', [$startSql, $endSql])
-            ->whereHas('category', fn ($q) => $q->where('is_bahan_baku', false))
+            ->whereHas('category', fn ($q) => $q->withTrashed()->where('is_bahan_baku', false))
             ->sum('nominal');
 
         $pengeluaranKas = $pembelianBahanBaku + $biayaOperasional;
@@ -259,7 +269,8 @@ final class ReportService
 
         $modalTotal = (float) CapitalInjection::whereBetween('tanggal', [$startSql, $endSql])->sum('nominal');
         $arusKasMasuk = $penjualan + $modalTotal;
-        $arusKasKeluar = $pengeluaranKas;
+        $returKeluar = $returTotal;
+        $arusKasKeluar = $pengeluaranKas + $returKeluar;
         $arusKasBersih = $arusKasMasuk - $arusKasKeluar;
 
         return [
@@ -277,6 +288,7 @@ final class ReportService
             'pengeluaranKas' => $pengeluaranKas,
             'labaBersih' => $labaBersih,
             'modalTotal' => $modalTotal,
+            'returKeluar' => $returKeluar,
             'arusKasMasuk' => $arusKasMasuk,
             'arusKasKeluar' => $arusKasKeluar,
             'arusKasBersih' => $arusKasBersih,

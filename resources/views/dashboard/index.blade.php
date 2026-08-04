@@ -402,8 +402,16 @@
     <x-offcanvas-detail id="offArusKas" eyebrow="Rincian" title="Arus Kas Bersih">
         <div class="d-flex flex-column gap-3">
             <div class="d-flex justify-content-between">
-                <span class="ld-body-sm">Kas Masuk (Penjualan)</span>
-                <span class="tnum fw-medium" x-text="fmt(summary.arusKasMasuk ?? summary.income ?? 0)"></span>
+                <span class="ld-body-sm">Penjualan (kotor)</span>
+                <span class="tnum fw-medium" x-text="fmt(summary.penjualan ?? 0)"></span>
+            </div>
+            <div class="d-flex justify-content-between text-danger">
+                <span class="ld-body-sm">− Retur Penjualan</span>
+                <span class="tnum fw-medium" x-text="'− ' + fmt(summary.returTotal ?? 0)"></span>
+            </div>
+            <div class="d-flex justify-content-between">
+                <span class="fw-medium">= Kas Masuk Penjualan</span>
+                <span class="tnum fw-medium" x-text="fmt(summary.pendapatanBersih ?? 0)"></span>
             </div>
             <div class="d-flex justify-content-between">
                 <span class="ld-body-sm">+ Modal / Setoran Pemilik</span>
@@ -412,7 +420,11 @@
             <hr class="my-1">
             <div class="d-flex justify-content-between fw-medium">
                 <span>= Total Kas Masuk</span>
-                <span class="tnum" x-text="fmt((summary.arusKasMasuk ?? summary.income ?? 0) + (summary.modalTotal ?? 0))"></span>
+                <span class="tnum" x-text="fmt(summary.arusKasMasuk ?? 0)"></span>
+            </div>
+            <div class="d-flex justify-content-between text-danger">
+                <span class="ld-body-sm">− Retur (uang dikembalikan ke pelanggan)</span>
+                <span class="tnum fw-medium" x-text="'− ' + fmt(summary.returTotal ?? 0)"></span>
             </div>
             <div class="d-flex justify-content-between text-danger">
                 <span class="ld-body-sm">− Pembelian Bahan Baku</span>
@@ -428,7 +440,7 @@
                 <span class="tnum" :class="(summary.arusKasBersih ?? 0) >= 0 ? 'text-success' : 'text-danger'" x-text="fmt(summary.arusKasBersih ?? 0)"></span>
             </div>
             <p class="ld-caption mb-0">
-                Arus kas menghitung uang riil keluar-masuk (termasuk modal). Bukan laba.
+                Arus kas menghitung uang riil keluar-masuk (termasuk modal). Bukan laba. Retur tetap dihitung sebagai kas keluar karena uang dikembalikan ke pelanggan.
             </p>
         </div>
     </x-offcanvas-detail>

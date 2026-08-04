@@ -81,7 +81,7 @@ describe('arus kas bersih — modal injection increases kas', function () {
     it('modal increases arus kas masuk but not pendapatanBersih or labaBersih', function () {
         $admin = User::factory()->admin()->create();
         $product = Product::factory()->create(['harga' => 100000, 'harga_modal' => 40000]);
-        Income::factory()->create([
+        $income = Income::factory()->create([
             'product_id' => $product->id,
             'user_id' => $admin->id,
             'tanggal_transaksi' => AppTimezone::todayDateString(),
@@ -89,6 +89,16 @@ describe('arus kas bersih — modal injection increases kas', function () {
             'harga_satuan' => 100000,
             'hpp_satuan' => 40000,
             'total' => 100000,
+        ]);
+
+        // Retur 20000 (uang dikembalikan ke pelanggan) — ikut arus kas keluar.
+        SalesReturn::create([
+            'income_id' => $income->id,
+            'product_id' => $product->id,
+            'user_id' => $admin->id,
+            'tanggal' => AppTimezone::todayDateString(),
+            'jumlah' => 1,
+            'nominal_retur' => 20000,
         ]);
 
         CapitalInjection::create([
@@ -101,13 +111,14 @@ describe('arus kas bersih — modal injection increases kas', function () {
         $response = $this->actingAs($admin)->getJson('/api/dashboard?period=bulan_ini');
 
         expect($response->json('summary.modalTotal'))->toBe(1000000);
-        expect($response->json('summary.arusKasMasuk'))->toBe(1100000);
-        expect($response->json('summary.arusKasBersih'))->toBe(1100000);
-        // Pendapatan Bersih unchanged from sales only
-        expect($response->json('summary.pendapatanBersih'))->toBe(100000);
-        // Laba Bersih = Laba Kotor - Beban Ops
-        // HPP = 40000; Laba Kotor = 60000; Laba Bersih = 60000
-        expect($response->json('summary.labaBersih'))->toBe(60000);
+        expect($response->json('summary.arusKasMasuk'))->toBe(1100000); // 100k jualan + 1jt modal
+        // Arus kas keluar = retur 20k (tidak ada beban/bahan baku di test ini)
+        expect($response->json('summary.arusKasKeluar'))->toBe(20000);
+        expect($response->json('summary.arusKasBersih'))->toBe(1080000);
+        // Pendapatan Bersih = 100k - 20k = 80k (retur tetap pengurang pendapatan)
+        expect($response->json('summary.pendapatanBersih'))->toBe(80000);
+        // HPP net = 1 * 40000 - 1 * 40000 = 0; Laba Kotor = 80000; Laba Bersih = 80000
+        expect($response->json('summary.labaBersih'))->toBe(80000);
     });
 });
 
@@ -224,6 +235,80 @@ describe('laporan tiered breakdown', function () {
         expect($report['biayaOperasional'])->toBe(30000.0);
         expect($report['pembelianBahanBaku'])->toBe(50000.0);
         expect($report['labaBersih'])->toBe(90000.0);
-        expect($report['arusKasBersih'])->toBe(200000.0 - 80000.0); // 120000
+        // Arus Kas Bersih = arusKasMasuk - arusKasKeluar
+        //   arusKasMasuk = 200000 (jualan, tidak ada modal di test ini)
+        //   arusKasKeluar = 50000 (bahan) + 30000 (operasional) = 80000
+        expect($report['arusKasMasuk'])->toBe(200000.0);
+        expect($report['arusKasKeluar'])->toBe(80000.0);
+        expect($report['arusKasBersih'])->toBe(120000.0);
+    });
+});
+
+describe('arus kas bersih — retur uang keluar', function () {
+    it('retur penjualan mengurangi arus kas bersih (uang kembali ke pelanggan)', function () {
+        $admin = User::factory()->admin()->create();
+        $product = Product::factory()->create(['harga' => 100000, 'harga_modal' => 40000]);
+        $income = Income::factory()->create([
+            'product_id' => $product->id,
+            'user_id' => $admin->id,
+            'tanggal_transaksi' => AppTimezone::todayDateString(),
+            'jumlah' => 3,
+            'harga_satuan' => 100000,
+            'hpp_satuan' => 40000,
+            'total' => 300000,
+        ]);
+
+        SalesReturn::create([
+            'income_id' => $income->id,
+            'product_id' => $product->id,
+            'user_id' => $admin->id,
+            'tanggal' => AppTimezone::todayDateString(),
+            'jumlah' => 1,
+            'nominal_retur' => 100000,
+        ]);
+
+        $response = $this->actingAs($admin)->getJson('/api/dashboard?period=bulan_ini');
+
+        // Arus kas masuk = penjualan + modal (tidak ada modal di sini) = 300000
+        expect($response->json('summary.arusKasMasuk'))->toBe(300000);
+        // Arus kas keluar = pengeluaranKas (0) + retur 100000
+        expect($response->json('summary.arusKasKeluar'))->toBe(100000);
+        expect($response->json('summary.arusKasBersih'))->toBe(200000);
+        expect($response->json('summary.returKeluar'))->toBe(100000);
+    });
+});
+
+describe('retur dari income yang di-soft-delete diabaikan', function () {
+    it('tidak ikut menjumlahkan returTotal saat penjualan sumbernya dihapus', function () {
+        $admin = User::factory()->admin()->create();
+        $product = Product::factory()->create();
+        $income = Income::factory()->create([
+            'product_id' => $product->id,
+            'user_id' => $admin->id,
+            'tanggal_transaksi' => AppTimezone::todayDateString(),
+            'jumlah' => 5,
+            'harga_satuan' => 100000,
+            'hpp_satuan' => 40000,
+            'total' => 500000,
+        ]);
+        SalesReturn::create([
+            'income_id' => $income->id,
+            'product_id' => $product->id,
+            'user_id' => $admin->id,
+            'tanggal' => AppTimezone::todayDateString(),
+            'jumlah' => 1,
+            'nominal_retur' => 100000,
+        ]);
+
+        // Income dihapus (soft delete) tanpa menghapus retur.
+        $income->delete();
+
+        $response = $this->actingAs($admin)->getJson('/api/dashboard?period=bulan_ini');
+
+        // Penjualan ikut hilang karena income di-trash; retur juga harus hilang.
+        expect($response->json('summary.penjualan'))->toBe(0);
+        expect($response->json('summary.returTotal'))->toBe(0);
+        expect($response->json('summary.pendapatanBersih'))->toBe(0);
+        expect($response->json('summary.arusKasKeluar'))->toBe(0);
     });
 });

@@ -241,7 +241,7 @@ const dashboard = (produk, kategoriProduk, kategoriPengeluaran, pengguna) => {
             _charts.trend = new Chart(this.$refs.trendChart, {
                 type: 'bar',
                 data: { labels: [], datasets: [
-                    { label: 'Pemasukan', data: [], backgroundColor: '#f36458', borderRadius: 3 },
+                    { label: 'Pendapatan Bersih', data: [], backgroundColor: '#f36458', borderRadius: 3 },
                     { label: 'Pengeluaran', data: [], backgroundColor: '#3d2a1a', borderRadius: 3 },
                 ] },
                 options: {
@@ -294,7 +294,7 @@ const dashboard = (produk, kategoriProduk, kategoriPengeluaran, pengguna) => {
         if (_charts.trend && this.serverData) {
             const trend = this.serverData.trend;
             _charts.trend.data.labels = trend.labels;
-            _charts.trend.data.datasets[0].data = trend.income;
+            _charts.trend.data.datasets[0].data = trend.pendapatanBersih ?? trend.income;
             _charts.trend.data.datasets[1].data = trend.expense;
             _charts.trend.update();
         }

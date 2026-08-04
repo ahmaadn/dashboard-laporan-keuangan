@@ -86,8 +86,16 @@
         <x-offcanvas-detail id="offArusKas" eyebrow="Rincian" title="Arus Kas Bersih">
             <div class="d-flex flex-column gap-3">
                 <div class="d-flex justify-content-between">
-                    <span class="ld-body-sm">Kas Masuk (Penjualan)</span>
-                    <span class="tnum fw-medium">@rupiah($report['arusKasMasuk'])</span>
+                    <span class="ld-body-sm">Penjualan (kotor)</span>
+                    <span class="tnum fw-medium">@rupiah($report['penjualan'])</span>
+                </div>
+                <div class="d-flex justify-content-between text-danger">
+                    <span class="ld-body-sm">− Retur Penjualan</span>
+                    <span class="tnum fw-medium">@rupiah($report['returTotal'])</span>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span class="fw-medium">= Kas Masuk Penjualan</span>
+                    <span class="tnum fw-medium">@rupiah($report['pendapatanBersih'])</span>
                 </div>
                 <div class="d-flex justify-content-between">
                     <span class="ld-body-sm">+ Modal / Setoran Pemilik</span>
@@ -96,7 +104,11 @@
                 <hr class="my-1">
                 <div class="d-flex justify-content-between fw-medium">
                     <span>= Total Kas Masuk</span>
-                    <span class="tnum">@rupiah($report['arusKasMasuk'] + $report['modalTotal'])</span>
+                    <span class="tnum">@rupiah($report['arusKasMasuk'])</span>
+                </div>
+                <div class="d-flex justify-content-between text-danger">
+                    <span class="ld-body-sm">− Retur (uang dikembalikan ke pelanggan)</span>
+                    <span class="tnum fw-medium">@rupiah($report['returTotal'])</span>
                 </div>
                 <div class="d-flex justify-content-between text-danger">
                     <span class="ld-body-sm">− Pembelian Bahan Baku</span>
@@ -113,7 +125,7 @@
                         :class="$report['arusKasBersih'] >= 0 ? 'text-success' : 'text-danger'">@rupiah($report['arusKasBersih'])</span>
                 </div>
                 <p class="ld-caption mb-0">
-                    Arus kas menghitung uang riil keluar-masuk (termasuk modal). Bukan laba.
+                    Arus kas menghitung uang riil keluar-masuk (termasuk modal). Bukan laba. Retur tetap dihitung sebagai kas keluar karena uang dikembalikan ke pelanggan.
                 </p>
             </div>
         </x-offcanvas-detail>
@@ -317,13 +329,13 @@
                     <span>@rupiah($report['arusKasMasuk'])</span>
                 </div>
                 <div class="d-flex justify-content-between small text-danger">
-                    <span>− Semua uang keluar (belanja + operasional)</span>
+                    <span>− Semua uang keluar (belanja + operasional + retur)</span>
                     <span>@rupiah($report['arusKasKeluar'])</span>
                 </div>
                 <p class="ld-caption mb-0 text-muted">
                     <i class="bi bi-info-circle me-1"><strong>Keterangan:</strong></i><strong>Beda dengan Laba
                         Bersih!</strong> Ini cek kas
-                    riil. Termasuk modal masuk, belanja bahan (bukan HPP).
+                    riil. Termasuk modal masuk, belanja bahan (bukan HPP), dan retur (uang yang dikembalikan ke pelanggan).
                 </p>
             </div>
         </div>

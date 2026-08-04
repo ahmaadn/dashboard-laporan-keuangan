@@ -86,6 +86,7 @@ final class DashboardService
                 'pembelianBahanBaku' => $metrics['pembelianBahanBaku'],
                 'labaBersih' => $metrics['labaBersih'],
                 'modalTotal' => $metrics['modalTotal'],
+                'returKeluar' => $metrics['returKeluar'],
                 'arusKasMasuk' => $metrics['arusKasMasuk'],
                 'arusKasKeluar' => $metrics['arusKasKeluar'],
                 'arusKasBersih' => $metrics['arusKasBersih'],
@@ -339,6 +340,7 @@ final class DashboardService
         $returRows = SalesReturn::query()
             ->whereBetween('sales_returns.tanggal', [$startSql, $endSql])
             ->join('incomes', 'incomes.id', '=', 'sales_returns.income_id')
+            ->whereNull('incomes.deleted_at')
             ->selectRaw('incomes.jenis_transaksi, SUM(sales_returns.nominal_retur) as retur_nominal')
             ->groupBy('incomes.jenis_transaksi')
             ->pluck('retur_nominal', 'incomes.jenis_transaksi');
