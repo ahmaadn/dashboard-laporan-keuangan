@@ -27,6 +27,12 @@ final class PeriodResolver
     ];
 
     /**
+     * Batas maksimum rentang tanggal kustom (inklusif), dalam hari.
+     * 731 hari = 2 tahun termasuk kemungkinan dua tahun kabisat.
+     */
+    public const MAX_RANGE_DAYS = 731;
+
+    /**
      * @return array{start: CarbonInterface, end: CarbonInterface, granularity: string, timezone: string, start_date: string, end_date: string, start_sql: string, end_sql: string}
      */
     public function resolve(string $period, ?string $start = null, ?string $end = null, ?string $timezone = null): array

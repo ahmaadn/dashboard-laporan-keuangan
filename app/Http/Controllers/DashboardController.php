@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\PeriodComparisonRequest;
+use App\Http\Requests\PeriodFilterRequest;
 use App\Http\Resources\ExpenseCategoryResource;
 use App\Http\Resources\ProductCategoryResource;
 use App\Http\Resources\ProductResource;
@@ -12,6 +14,7 @@ use App\Models\ProductCategory;
 use App\Models\User;
 use App\Services\DashboardService;
 use App\Services\PeriodResolver;
+use App\Support\AppTimezone;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -32,36 +35,25 @@ class DashboardController extends Controller
             'kategoriPengeluaran' => ExpenseCategoryResource::collection($kategoriPengeluaran)->resolve(),
             'pengguna' => UserResource::collection($pengguna)->resolve(),
             'currentUser' => $request->user() ? UserResource::make($request->user())->resolve() : null,
+            'tanggalHariIni' => AppTimezone::todayDateString(),
+            'maxRentangHari' => PeriodResolver::MAX_RANGE_DAYS,
         ]);
     }
 
-    public function data(Request $request): JsonResponse
+    public function data(PeriodFilterRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'period' => ['string', 'in:'.implode(',', array_keys(PeriodResolver::OPTIONS))],
-            'start' => ['nullable', 'date'],
-            'end' => ['nullable', 'date'],
-        ]);
-
         return response()->json(
             $this->dashboardService->data(
-                $validated['period'] ?? 'bulan_ini',
-                $validated['start'] ?? null,
-                $validated['end'] ?? null,
+                $request->periodKey(),
+                $request->startDate(),
+                $request->endDate(),
             ),
         );
     }
 
-    public function compare(Request $request): JsonResponse
+    public function compare(PeriodComparisonRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'a' => ['required', 'string'],
-            'b' => ['required', 'string'],
-            'a_start' => ['nullable', 'date'],
-            'a_end' => ['nullable', 'date'],
-            'b_start' => ['nullable', 'date'],
-            'b_end' => ['nullable', 'date'],
-        ]);
+        $validated = $request->validated();
 
         return response()->json(
             $this->dashboardService->compare(

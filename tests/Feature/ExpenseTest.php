@@ -1,13 +1,19 @@
 <?php
 
+use App\Models\CapitalInjection;
 use App\Models\Expense;
 use App\Models\ExpenseCategory;
 use App\Models\User;
+use App\Support\AppTimezone;
 
 describe('expense store', function () {
     it('creates an expense', function () {
         $pegawai = User::factory()->pegawai()->create();
         $category = ExpenseCategory::factory()->create();
+        CapitalInjection::factory()->create([
+            'tanggal' => today()->toDateString(),
+            'nominal' => 500000,
+        ]);
 
         $response = $this->actingAs($pegawai)->postJson('/expenses', [
             'id_kategori' => $category->id,
@@ -48,7 +54,7 @@ describe('expense store', function () {
 
         $this->actingAs($pegawai)->postJson('/expenses', [
             'id_kategori' => $category->id,
-            'tanggal_transaksi' => now()->addDay()->toDateString(),
+            'tanggal_transaksi' => AppTimezone::today()->addDays(2)->toDateString(),
             'nominal' => 100000,
         ])->assertStatus(422);
     });

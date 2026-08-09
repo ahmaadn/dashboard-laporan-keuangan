@@ -239,6 +239,7 @@ const income = (rows, produkAktif, produkById, penggunaById, currentUserId) => (
     produkById,
     penggunaById,
     currentUserId,
+    today: todayStr(),
     search: '',
     modalOpen: false,
     editingId: null,
@@ -255,6 +256,10 @@ const income = (rows, produkAktif, produkById, penggunaById, currentUserId) => (
     returForm: {},
     returErrors: {},
     returSaving: false,
+    notaOpen: false,
+    notaLoading: false,
+    notaError: '',
+    nota: null,
 
     get visibleRows() {
         if (!this.search.trim()) {
@@ -674,6 +679,45 @@ const income = (rows, produkAktif, produkById, penggunaById, currentUserId) => (
         this.dismissToast();
     },
 
+    /** Nota penjualan — bukti transaksi per nomor transaksi kasir. */
+    async openNota(row) {
+        if (!row.nomor_transaksi) {
+            this.toast = 'Transaksi ini belum memiliki nomor nota.';
+            this.dismissToast();
+            return;
+        }
+        this.nota = null;
+        this.notaError = '';
+        this.notaLoading = true;
+        this.notaOpen = true;
+
+        const res = await apiFetch(`/income/nota/${encodeURIComponent(row.nomor_transaksi)}`);
+        this.notaLoading = false;
+
+        if (!res.success) {
+            this.notaError = res.message || 'Gagal memuat nota.';
+            return;
+        }
+        this.nota = res.nota;
+    },
+
+    downloadNota() {
+        if (!this.nota) return;
+        window.location.href = `/income/nota/${encodeURIComponent(this.nota.nomor_transaksi)}/pdf`;
+    },
+
+    printNota() {
+        if (!document.getElementById('notaPrintArea')) return;
+        document.body.classList.add('ld-printing-nota');
+        const cleanup = () => {
+            document.body.classList.remove('ld-printing-nota');
+            window.removeEventListener('afterprint', cleanup);
+        };
+        window.addEventListener('afterprint', cleanup);
+        window.print();
+        setTimeout(cleanup, 1000);
+    },
+
     confirmDelete(row) {
         this.deleteTarget = row;
     },
@@ -700,11 +744,13 @@ const income = (rows, produkAktif, produkById, penggunaById, currentUserId) => (
     },
 });
 
-const expenses = (rows, kategoriPengeluaran, penggunaById, currentUserId) => ({
+const expenses = (rows, kategoriPengeluaran, penggunaById, currentUserId, saldoKas) => ({
     rows,
     kategoriPengeluaran,
     penggunaById,
     currentUserId,
+    saldoKas: saldoKas ?? { kasMasuk: 0, kasKeluar: 0, saldo: 0 },
+    today: todayStr(),
     search: '',
     modalOpen: false,
     editingId: null,
@@ -721,6 +767,26 @@ const expenses = (rows, kategoriPengeluaran, penggunaById, currentUserId) => ({
         const q = this.search.toLowerCase();
 
         return this.rows.filter((r) => `${this.kategoriNama(r.id_kategori)} ${r.tanggal_transaksi} ${r.keterangan}`.toLowerCase().includes(q));
+    },
+
+    /**
+     * Saldo yang boleh dipakai transaksi ini. Saat mengubah transaksi, nominal
+     * lamanya dikembalikan dulu agar tidak terhitung dua kali.
+     */
+    get saldoTersedia() {
+        const base = Number(this.saldoKas?.saldo ?? 0);
+        if (!this.editingId) {
+            return base;
+        }
+        const current = this.rows.find((r) => r.id === this.editingId);
+
+        return base + Number(current?.nominal ?? 0);
+    },
+
+    get melebihiSaldo() {
+        const nominal = Number(this.form.nominal) || 0;
+
+        return nominal > this.saldoTersedia;
     },
 
     kategoriNama(id) {
@@ -766,11 +832,15 @@ const expenses = (rows, kategoriPengeluaran, penggunaById, currentUserId) => ({
 
         if (!res.success) {
             if (res.errors) {
-                this.errors = res.errors;
+                this.errors = Object.fromEntries(Object.entries(res.errors).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v]));
             } else {
                 this.errors = { nominal: res.message || 'Terjadi kesalahan.' };
             }
             return;
+        }
+
+        if (res.saldo_kas) {
+            this.saldoKas = res.saldo_kas;
         }
 
         if (this.editingId) {
@@ -797,6 +867,9 @@ const expenses = (rows, kategoriPengeluaran, penggunaById, currentUserId) => ({
             this.deleteTarget = null;
             this.dismissToast();
             return;
+        }
+        if (res.saldo_kas) {
+            this.saldoKas = res.saldo_kas;
         }
         this.deleteTarget.dihapus_pada = nowStr();
         this.toast = 'Transaksi dihapus (soft delete).';
@@ -1034,12 +1107,14 @@ const capital = (rows, penggunaById, currentUser) => ({
     penggunaById,
     currentUser,
     isAdmin: currentUser?.peran === 'admin',
+    today: todayStr(),
     search: '',
     modalOpen: false,
     form: {},
     errors: {},
     deleteTarget: null,
     toast: '',
+    saving: false,
 
     get visibleRows() {
         if (!this.search.trim()) {
@@ -1058,12 +1133,14 @@ const capital = (rows, penggunaById, currentUser) => ({
 
     async save() {
         this.errors = {};
+        this.saving = true;
         const body = JSON.stringify({
             tanggal: this.form.tanggal,
             nominal: Number(this.form.nominal),
             keterangan: this.form.keterangan,
         });
         const res = await apiFetch('/capital', { method: 'POST', body });
+        this.saving = false;
         if (!res.success) {
             if (res.errors) {
                 this.errors = Object.fromEntries(Object.entries(res.errors).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v]));
@@ -1119,12 +1196,14 @@ const salesReturns = (rows, currentUser) => ({
     rows,
     currentUser,
     isAdmin: currentUser?.peran === 'admin',
+    today: todayStr(),
     search: '',
     modalOpen: false,
     form: {},
     errors: {},
     deleteTarget: null,
     toast: '',
+    saving: false,
 
     init() {
         const params = new URLSearchParams(window.location.search);
@@ -1156,6 +1235,7 @@ const salesReturns = (rows, currentUser) => ({
 
     async save() {
         this.errors = {};
+        this.saving = true;
         const body = JSON.stringify({
             id_penjualan: Number(this.form.id_penjualan),
             tanggal: this.form.tanggal,
@@ -1163,6 +1243,7 @@ const salesReturns = (rows, currentUser) => ({
             alasan: this.form.alasan,
         });
         const res = await apiFetch('/sales-returns', { method: 'POST', body });
+        this.saving = false;
         if (!res.success) {
             if (res.errors) {
                 this.errors = Object.fromEntries(Object.entries(res.errors).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v]));

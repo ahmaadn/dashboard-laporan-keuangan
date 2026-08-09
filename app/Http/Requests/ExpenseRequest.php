@@ -2,13 +2,21 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Expense;
+use App\Services\CashBalanceService;
 use App\Support\AppTimezone;
+use App\Support\Format;
+use Illuminate\Contracts\Validation\Validator;
 
 class ExpenseRequest extends BaseFormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        $expense = $this->existingExpense();
+
+        // Otorisasi didahulukan agar akses terlarang menghasilkan 403, bukan 422
+        // dari aturan saldo kas di bawah.
+        return $expense === null || $this->user()?->can('update', $expense) === true;
     }
 
     public function rules(): array
@@ -33,6 +41,31 @@ class ExpenseRequest extends BaseFormRequest
         ];
     }
 
+    /**
+     * Pengeluaran tidak boleh melebihi saldo kas yang tersedia (modal + penjualan
+     * − retur − pengeluaran lain). Fitur modal jadi punya fungsi nyata: tanpa
+     * saldo, pengeluaran ditolak.
+     */
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            if ($validator->errors()->isNotEmpty()) {
+                return;
+            }
+
+            $nominal = (float) $this->input('nominal');
+            $tanggal = (string) $this->input('tanggal_transaksi');
+            $saldo = app(CashBalanceService::class)->saldoTersedia($tanggal, $this->existingExpense());
+
+            if ($nominal > $saldo) {
+                $validator->errors()->add(
+                    'nominal',
+                    'Saldo kas tidak mencukupi. Saldo tersedia '.Format::rupiah($saldo).'.',
+                );
+            }
+        });
+    }
+
     /** @return array<string, mixed> */
     public function mapped(): array
     {
@@ -42,5 +75,12 @@ class ExpenseRequest extends BaseFormRequest
             'nominal' => (float) $this->input('nominal'),
             'keterangan' => $this->input('keterangan'),
         ];
+    }
+
+    private function existingExpense(): ?Expense
+    {
+        $expense = $this->route('expense');
+
+        return $expense instanceof Expense ? $expense : null;
     }
 }

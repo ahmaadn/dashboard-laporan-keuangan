@@ -31,7 +31,7 @@ function rupiah(n) {
     return 'Rp ' + Number(n || 0).toLocaleString('id-ID');
 }
 
-const dashboard = (produk, kategoriProduk, kategoriPengeluaran, pengguna) => {
+const dashboard = (produk, kategoriProduk, kategoriPengeluaran, pengguna, tanggalHariIni, maxRangeDays) => {
     const _charts = { trend: null, category: null, product: null };
 
     return {
@@ -41,6 +41,11 @@ const dashboard = (produk, kategoriProduk, kategoriPengeluaran, pengguna) => {
     penggunaMap: {},
 
     serverData: null,
+
+    today: tanggalHariIni || dateStr(new Date()),
+    maxRangeDays: maxRangeDays || 731,
+    rangeError: '',
+    cmpError: '',
 
     period: 'bulan_ini',
     rangeStart: '',
@@ -84,7 +89,41 @@ const dashboard = (produk, kategoriProduk, kategoriPengeluaran, pengguna) => {
         this.$watch('cmpCustomB', () => { if (this.cmpB === 'rentang') this.fetchCompare(); }, { deep: true });
     },
 
+    /**
+     * Validasi rentang: tidak melebihi hari ini, awal <= akhir, dan panjang
+     * rentang tidak melebihi batas maksimum. Mengembalikan pesan atau ''.
+     */
+    validateRange(start, end, label = '') {
+        if (!start || !end) {
+            return '';
+        }
+        const prefix = label ? `Periode ${label}: ` : '';
+        if (start > this.today || end > this.today) {
+            return `${prefix}Tanggal tidak boleh melebihi hari ini.`;
+        }
+        if (start > end) {
+            return `${prefix}Tanggal awal tidak boleh melebihi tanggal akhir.`;
+        }
+        const days = Math.round((Date.parse(end) - Date.parse(start)) / 86400000) + 1;
+        if (days > this.maxRangeDays) {
+            return `${prefix}Rentang periode maksimal ${this.maxRangeDays} hari; rentang dipilih ${days} hari.`;
+        }
+
+        return '';
+    },
+
     async fetchData() {
+        this.rangeError = this.period === 'rentang'
+            ? this.validateRange(this.rangeStart, this.rangeEnd)
+            : '';
+
+        // Rentang tidak valid: jangan tampilkan data sama sekali.
+        if (this.rangeError) {
+            this.serverData = null;
+            this.$nextTick(() => this.renderCharts());
+            return;
+        }
+
         const params = new URLSearchParams();
         params.set('period', this.period);
         if (this.period === 'rentang') {
@@ -92,8 +131,14 @@ const dashboard = (produk, kategoriProduk, kategoriPengeluaran, pengguna) => {
             params.set('end', this.rangeEnd);
         }
         try {
-            const res = await fetch(`/api/dashboard?${params}`);
-            this.serverData = await res.json();
+            const res = await fetch(`/api/dashboard?${params}`, { headers: { Accept: 'application/json' } });
+            const data = await res.json();
+            if (!res.ok) {
+                this.rangeError = data?.message || 'Filter periode tidak valid.';
+                this.serverData = null;
+            } else {
+                this.serverData = data;
+            }
         } catch (e) {
             this.serverData = null;
         }
@@ -107,6 +152,15 @@ const dashboard = (produk, kategoriProduk, kategoriPengeluaran, pengguna) => {
     },
 
     async fetchCompare() {
+        const errA = this.cmpA === 'rentang' ? this.validateRange(this.cmpCustomA.start, this.cmpCustomA.end, 'A') : '';
+        const errB = this.cmpB === 'rentang' ? this.validateRange(this.cmpCustomB.start, this.cmpCustomB.end, 'B') : '';
+        this.cmpError = errA || errB;
+
+        if (this.cmpError) {
+            this.cmpData = null;
+            return;
+        }
+
         const params = new URLSearchParams();
         params.set('a', this.cmpA);
         params.set('b', this.cmpB);
@@ -119,8 +173,14 @@ const dashboard = (produk, kategoriProduk, kategoriPengeluaran, pengguna) => {
             params.set('b_end', this.cmpCustomB.end);
         }
         try {
-            const res = await fetch(`/api/dashboard/compare?${params}`);
-            this.cmpData = await res.json();
+            const res = await fetch(`/api/dashboard/compare?${params}`, { headers: { Accept: 'application/json' } });
+            const data = await res.json();
+            if (!res.ok) {
+                this.cmpError = data?.message || 'Filter perbandingan tidak valid.';
+                this.cmpData = null;
+            } else {
+                this.cmpData = data;
+            }
         } catch (e) {
             this.cmpData = null;
         }
@@ -291,11 +351,11 @@ const dashboard = (produk, kategoriProduk, kategoriPengeluaran, pengguna) => {
     },
 
     renderCharts() {
-        if (_charts.trend && this.serverData) {
-            const trend = this.serverData.trend;
-            _charts.trend.data.labels = trend.labels;
-            _charts.trend.data.datasets[0].data = trend.pendapatanBersih ?? trend.income;
-            _charts.trend.data.datasets[1].data = trend.expense;
+        if (_charts.trend) {
+            const trend = this.serverData?.trend;
+            _charts.trend.data.labels = trend?.labels ?? [];
+            _charts.trend.data.datasets[0].data = trend ? (trend.pendapatanBersih ?? trend.income) : [];
+            _charts.trend.data.datasets[1].data = trend?.expense ?? [];
             _charts.trend.update();
         }
 

@@ -8,16 +8,34 @@
 @endpush
 
 @section('content')
-<div x-data="expenses(@js($pengeluaran), @js($kategoriPengeluaran), @js($penggunaById), @js($currentUser['id']))">
+<div x-data="expenses(@js($pengeluaran), @js($kategoriPengeluaran), @js($penggunaById), @js($currentUser['id']), @js($saldoKas))">
 
     <x-page-header eyebrow="Transaksi" title="Pengeluaran">
         <x-slot:actions>
-            <button type="button" class="btn btn-brand" @click="openAdd()">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                Tambah Transaksi
-            </button>
+            <x-button variant="brand" icon="plus" @click="openAdd()">Tambah Transaksi</x-button>
         </x-slot:actions>
     </x-page-header>
+
+    {{-- Saldo kas: pengeluaran tidak dapat melebihi nilai ini --}}
+    <div class="ld-cash-balance" :class="saldoKas.saldo <= 0 ? 'ld-cash-balance--empty' : ''">
+        <div>
+            <span class="ld-mono-caps">Saldo Kas Tersedia</span>
+            <div class="ld-cash-balance__value tnum" x-text="rupiah(saldoKas.saldo)"></div>
+            <p class="ld-caption mb-0" x-show="saldoKas.saldo <= 0" x-cloak>
+                Saldo kas habis. Catat setoran modal atau penjualan terlebih dahulu sebelum mencatat pengeluaran.
+            </p>
+        </div>
+        <div class="ld-cash-balance__meta">
+            <div class="ld-summary-stat">
+                <span class="ld-summary-stat__label">Kas Masuk</span>
+                <span class="tnum" x-text="rupiah(saldoKas.kasMasuk)"></span>
+            </div>
+            <div class="ld-summary-stat">
+                <span class="ld-summary-stat__label">Kas Keluar</span>
+                <span class="tnum" x-text="rupiah(saldoKas.kasKeluar)"></span>
+            </div>
+        </div>
+    </div>
 
     <x-app-card>
         <div class="d-flex justify-content-between align-items-center mb-3 gap-2">
@@ -87,13 +105,19 @@
                     </div>
                     <div>
                         <label class="form-label">Tanggal Transaksi <span class="req">*</span></label>
-                        <input type="date" class="form-control" :class="errors.tanggal_transaksi ? 'ld-input-invalid' : ''" x-model="form.tanggal_transaksi">
+                        <input type="date" class="form-control" :max="today" :class="errors.tanggal_transaksi ? 'ld-input-invalid' : ''" x-model="form.tanggal_transaksi">
                         <div class="ld-field-error" x-show="errors.tanggal_transaksi" x-text="errors.tanggal_transaksi"></div>
                     </div>
                     <div class="full">
                         <label class="form-label">Nominal <span class="req">*</span></label>
                         <input type="number" min="1" step="1000" class="form-control" :class="errors.nominal ? 'ld-input-invalid' : ''" x-model="form.nominal">
                         <div class="ld-field-error" x-show="errors.nominal" x-text="errors.nominal"></div>
+                        <p class="ld-caption mt-1 mb-0">
+                            Saldo kas tersedia: <span class="tnum fw-medium" x-text="rupiah(saldoTersedia)"></span>
+                        </p>
+                        <div class="ld-field-error" x-show="melebihiSaldo" x-cloak>
+                            Nominal melebihi saldo kas tersedia.
+                        </div>
                     </div>
                     <div class="full">
                         <label class="form-label">Keterangan</label>
@@ -102,8 +126,8 @@
                 </div>
             </div>
             <div class="ld-modal__footer">
-                <button type="button" class="btn btn-app-secondary" @click="modalOpen = false">Batal</button>
-                <button type="button" class="btn btn-app" @click="save()">Simpan</button>
+                <x-button variant="secondary" icon="close" @click="modalOpen = false">Batal</x-button>
+                <x-button variant="app" icon="check" ::disabled="saving || melebihiSaldo" ::class="saving ? 'is-loading' : ''" @click="save()">Simpan</x-button>
             </div>
         </div>
     </div>
@@ -116,8 +140,8 @@
                 <p class="mb-0">Pengeluaran <strong x-text="deleteTarget ? kategoriNama(deleteTarget.id_kategori) : ''"></strong> sebesar <strong x-text="deleteTarget ? rupiah(deleteTarget.nominal) : ''"></strong> akan dihapus (soft delete).</p>
             </div>
             <div class="ld-modal__footer">
-                <button type="button" class="btn btn-app-secondary" @click="deleteTarget = null">Batal</button>
-                <button type="button" class="btn btn-danger" @click="doDelete()">Hapus</button>
+                <x-button variant="secondary" icon="close" @click="deleteTarget = null">Batal</x-button>
+                <x-button variant="danger" icon="trash" @click="doDelete()">Hapus</x-button>
             </div>
         </div>
     </div>

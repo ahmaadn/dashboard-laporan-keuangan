@@ -9,11 +9,14 @@ use App\Http\Resources\UserResource;
 use App\Models\Expense;
 use App\Models\ExpenseCategory;
 use App\Models\User;
+use App\Services\CashBalanceService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ExpenseController extends Controller
 {
+    public function __construct(private readonly CashBalanceService $cashBalance) {}
+
     public function index(Request $request)
     {
         $expenses = Expense::orderBy('created_at', 'desc')->get();
@@ -25,6 +28,7 @@ class ExpenseController extends Controller
             'kategoriPengeluaran' => ExpenseCategoryResource::collection($categories)->resolve(),
             'penggunaById' => collect(UserResource::collection($allUsers)->resolve())->keyBy('id')->all(),
             'currentUser' => $request->user() ? UserResource::make($request->user())->resolve() : null,
+            'saldoKas' => $this->cashBalance->ringkasan(),
         ]);
     }
 
@@ -38,6 +42,7 @@ class ExpenseController extends Controller
         return response()->json([
             'success' => true,
             'resource' => ExpenseResource::make($expense->fresh())->resolve(),
+            'saldo_kas' => $this->cashBalance->ringkasan(),
         ], 201);
     }
 
@@ -54,6 +59,7 @@ class ExpenseController extends Controller
         return response()->json([
             'success' => true,
             'resource' => ExpenseResource::make($expense->fresh())->resolve(),
+            'saldo_kas' => $this->cashBalance->ringkasan(),
         ]);
     }
 
@@ -63,6 +69,9 @@ class ExpenseController extends Controller
 
         $expense->delete();
 
-        return response()->json(['success' => true]);
+        return response()->json([
+            'success' => true,
+            'saldo_kas' => $this->cashBalance->ringkasan(),
+        ]);
     }
 }

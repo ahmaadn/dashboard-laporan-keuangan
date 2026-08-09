@@ -23,8 +23,7 @@
     --bs-btn-font-size: 0.9375rem;
     --bs-btn-font-weight: 500;
     border-radius: var(--ld-r-app-md);
-}
-.btn-brand {
+}.btn-brand {
     --bs-btn-bg: var(--ld-brand);
     --bs-btn-color: var(--ld-ink);
     --bs-btn-border-color: var(--ld-brand);
@@ -90,6 +89,261 @@
     --bs-btn-padding-x: 0.75rem;
     --bs-btn-font-size: 0.8125rem;
     border-radius: var(--ld-r-app-sm);
+}
+
+/* --- Button polish: ikon, hover lift, focus ring, loading, disabled --- */
+.btn {
+    --ld-btn-lift: -1px;
+    transition:
+        background-color 0.15s ease,
+        border-color 0.15s ease,
+        color 0.15s ease,
+        box-shadow 0.15s ease,
+        transform 0.12s ease;
+}
+.btn-icon-label {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    white-space: nowrap;
+    line-height: 1.4;
+}
+.btn-icon {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+}
+.btn-sm .btn-icon { width: 14px; height: 14px; }
+.btn-lg .btn-icon { width: 18px; height: 18px; }
+.btn-icon-only {
+    --bs-btn-padding-x: 0.625rem;
+    gap: 0;
+}
+.btn-icon-only.btn-sm { --bs-btn-padding-x: 0.5rem; }
+
+/* Hover: subtle lift + shadow so the affordance reads clearly */
+.btn-app:hover,
+.btn-brand:hover,
+.btn-danger:hover,
+.btn-app-success:hover {
+    transform: translateY(var(--ld-btn-lift));
+    box-shadow: 0 4px 14px rgba(28, 17, 8, 0.18);
+}
+.btn-app-secondary:hover {
+    transform: translateY(var(--ld-btn-lift));
+    box-shadow: 0 2px 10px rgba(28, 17, 8, 0.1);
+}
+.btn-app:active,
+.btn-brand:active,
+.btn-danger:active,
+.btn-app-secondary:active,
+.btn-app-success:active {
+    transform: translateY(0);
+    box-shadow: none;
+}
+
+/* Keyboard focus stays visible on every variant */
+.btn:focus-visible {
+    outline: 0;
+    box-shadow: 0 0 0 3px rgba(0, 82, 239, 0.35);
+}
+
+/* Disabled: clearly inert (Bootstrap keeps bg identical by default) */
+.btn:disabled,
+.btn.disabled {
+    opacity: 0.5;
+    transform: none;
+    box-shadow: none;
+    cursor: not-allowed;
+    pointer-events: auto;
+}
+
+/* Success variant — dipakai untuk aksi konfirmatif (mis. simpan nota) */
+.btn-app-success {
+    --bs-btn-bg: var(--ld-success);
+    --bs-btn-color: #fff;
+    --bs-btn-border-color: var(--ld-success);
+    --bs-btn-hover-bg: #2ba86a;
+    --bs-btn-hover-border-color: #2ba86a;
+    --bs-btn-hover-color: #fff;
+    --bs-btn-active-bg: #2ba86a;
+    --bs-btn-active-border-color: #2ba86a;
+    --bs-btn-active-color: #fff;
+    --bs-btn-padding-y: 0.625rem;
+    --bs-btn-padding-x: 1.25rem;
+    --bs-btn-font-size: 0.9375rem;
+    --bs-btn-font-weight: 500;
+    border-radius: var(--ld-r-app-md);
+}
+
+/* Loading state — spinner menggantikan ikon */
+.btn.is-loading { position: relative; color: transparent !important; pointer-events: none; }
+.btn.is-loading > * { visibility: hidden; }
+.btn.is-loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 1rem;
+    height: 1rem;
+    margin: -0.5rem 0 0 -0.5rem;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    color: #fff;
+    animation: ld-btn-spin 0.6s linear infinite;
+}
+.btn-app-secondary.is-loading::after { color: var(--ld-ink); }
+@keyframes ld-btn-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+    .btn { transition: none; }
+    .btn:hover { transform: none; }
+    .btn.is-loading::after { animation-duration: 1.6s; }
+}
+
+/* Row action buttons — beri ikon + hover yang lebih jelas */
+.ld-action-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+.ld-action-link .btn-icon { width: 14px; height: 14px; }
+
+/* Tombol Keluar di topbar — netral, menegas merah saat hover */
+.ld-logout-btn:hover,
+.ld-logout-btn:focus-visible {
+    --bs-btn-hover-bg: rgba(221, 0, 0, 0.08);
+    --bs-btn-hover-border-color: rgba(221, 0, 0, 0.35);
+    --bs-btn-hover-color: var(--ld-error);
+}
+.ld-logout-btn:active {
+    --bs-btn-active-bg: rgba(221, 0, 0, 0.14);
+    --bs-btn-active-border-color: rgba(221, 0, 0, 0.45);
+    --bs-btn-active-color: var(--ld-error);
+}
+
+/* --- Validation notice (rentang tanggal tidak valid, saldo kas kurang) --- */
+.ld-validation-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--ld-space-sm);
+    padding: var(--ld-space-md);
+    border-radius: var(--ld-r-app-md);
+    background-color: rgba(221, 0, 0, 0.07);
+    border: 1px solid rgba(221, 0, 0, 0.25);
+    color: var(--ld-ink);
+}
+.ld-validation-notice__icon {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    border-radius: var(--ld-r-full);
+    background-color: var(--ld-error);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8125rem;
+    font-weight: 700;
+}
+.ld-validation-notice__title { font-weight: 600; color: var(--ld-error); }
+
+/* --- Kartu saldo kas (halaman Pengeluaran) --- */
+.ld-cash-balance {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--ld-space-md);
+    flex-wrap: wrap;
+    padding: var(--ld-space-md) var(--ld-space-lg);
+    border: 1px solid var(--ld-hairline);
+    border-left: 3px solid var(--ld-success);
+    border-radius: var(--ld-r-marketing);
+    background-color: var(--ld-canvas-light);
+    margin-bottom: var(--ld-space-lg);
+}
+.ld-cash-balance--empty { border-left-color: var(--ld-error); }
+.ld-cash-balance__value { font-size: 1.625rem; font-weight: 500; letter-spacing: -0.4px; color: var(--ld-ink); }
+.ld-cash-balance--empty .ld-cash-balance__value { color: var(--ld-error); }
+.ld-cash-balance__meta { display: flex; gap: var(--ld-space-lg); flex-wrap: wrap; }
+
+/* --- Nota penjualan (preview struk) --- */
+.ld-nota {
+    background-color: #fff;
+    border: 1px solid var(--ld-hairline);
+    border-radius: var(--ld-r-app-md);
+    padding: var(--ld-space-lg);
+    font-size: 0.875rem;
+    color: var(--ld-ink);
+}
+.ld-nota__head { text-align: center; border-bottom: 2px solid var(--ld-ink); padding-bottom: 0.625rem; }
+.ld-nota__brand { font-size: 1.0625rem; font-weight: 700; letter-spacing: 0.04em; }
+.ld-nota__subtitle { font-size: 0.75rem; color: var(--ld-mute); }
+.ld-nota__title {
+    margin-top: 0.5rem;
+    font-family: var(--ld-font-mono);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ld-ink-soft);
+}
+.ld-nota__meta { margin: var(--ld-space-md) 0 0; display: flex; flex-direction: column; gap: 0.25rem; }
+.ld-nota__meta > div { display: flex; justify-content: space-between; gap: var(--ld-space-md); }
+.ld-nota__meta dt { font-weight: 400; color: var(--ld-mute); font-size: 0.8125rem; }
+.ld-nota__meta dd { margin: 0; font-weight: 600; text-align: right; font-size: 0.8125rem; }
+.ld-nota__items { width: 100%; border-collapse: collapse; margin-top: var(--ld-space-md); }
+.ld-nota__items th {
+    font-family: var(--ld-font-mono);
+    font-size: 0.625rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ld-mute);
+    text-align: left;
+    border-bottom: 1px solid var(--ld-ink);
+    padding: 0.375rem 0.25rem;
+}
+.ld-nota__items td { padding: 0.4rem 0.25rem; border-bottom: 1px dashed var(--ld-hairline); vertical-align: top; }
+.ld-nota__flag {
+    font-family: var(--ld-font-mono);
+    font-size: 0.625rem;
+    text-transform: uppercase;
+    color: var(--ld-mute);
+}
+.ld-nota__flag--retur { color: var(--ld-error); display: block; }
+.ld-nota__totals { margin-top: var(--ld-space-md); display: flex; flex-direction: column; gap: 0.25rem; }
+.ld-nota__totals > div { display: flex; justify-content: space-between; gap: var(--ld-space-md); }
+.ld-nota__retur { color: var(--ld-error); }
+.ld-nota__grand {
+    border-top: 2px solid var(--ld-ink);
+    padding-top: 0.5rem;
+    margin-top: 0.25rem;
+    font-size: 1.0625rem;
+    font-weight: 700;
+}
+.ld-nota__foot {
+    margin: var(--ld-space-md) 0 0;
+    padding-top: 0.5rem;
+    border-top: 1px dashed var(--ld-hairline);
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--ld-mute);
+}
+
+/* Cetak nota: sembunyikan seluruh aplikasi kecuali area nota */
+@media print {
+    body.ld-printing-nota * { visibility: hidden; }
+    body.ld-printing-nota #notaPrintArea,
+    body.ld-printing-nota #notaPrintArea * { visibility: visible; }
+    body.ld-printing-nota #notaPrintArea {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        border: 0;
+        padding: 0;
+    }
 }
 
 /* Touch-target growth on small screens (DESIGN.md ≥44px) */

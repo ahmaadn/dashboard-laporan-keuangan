@@ -48,7 +48,7 @@
                         </div>
                     </div>
 
-                    <button type="submit" class="btn-pill-brand w-100">Masuk</button>
+                    <button type="submit" class="btn btn-pill-brand w-100">Masuk</button>
                 </form>
 
                 <hr class="ld-auth-divider">

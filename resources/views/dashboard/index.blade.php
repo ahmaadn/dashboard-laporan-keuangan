@@ -8,7 +8,7 @@
 @endpush
 
 @section('content')
-<div x-data="dashboard(@js($produk), @js($kategoriProduk), @js($kategoriPengeluaran), @js($pengguna))">
+<div x-data="dashboard(@js($produk), @js($kategoriProduk), @js($kategoriPengeluaran), @js($pengguna), @js($tanggalHariIni), @js($maxRentangHari))">
 
     {{-- 8.7 Filter Periode --}}
     <div class="ld-filter-bar">
@@ -22,14 +22,30 @@
         </div>
         <template x-if="period === 'rentang'">
             <div class="d-flex align-items-center gap-2 ms-2">
-                <input type="date" class="form-control form-control-sm" style="max-width: 150px" x-model="rangeStart">
+                <input type="date" class="form-control form-control-sm" style="max-width: 150px"
+                    :max="today" :class="rangeError ? 'ld-input-invalid' : ''" x-model="rangeStart">
                 <span class="ld-mono-caps">s/d</span>
-                <input type="date" class="form-control form-control-sm" style="max-width: 150px" x-model="rangeEnd">
+                <input type="date" class="form-control form-control-sm" style="max-width: 150px"
+                    :max="today" :class="rangeError ? 'ld-input-invalid' : ''" x-model="rangeEnd">
             </div>
         </template>
-        <span class="ld-mono-caps ms-auto" x-text="periodLabel"></span>
+        <span class="ld-mono-caps ms-auto" x-show="!rangeError" x-text="periodLabel"></span>
     </div>
-    <p class="ld-caption mb-3" x-text="periodHint"></p>
+
+    <template x-if="rangeError">
+        <div class="ld-validation-notice mb-3" role="alert">
+            <span class="ld-validation-notice__icon" aria-hidden="true">!</span>
+            <div>
+                <p class="ld-validation-notice__title mb-1">Rentang tanggal tidak valid</p>
+                <p class="mb-1" x-text="rangeError"></p>
+                <p class="ld-caption mb-0">
+                    Data tidak ditampilkan sampai rentang diperbaiki. Maksimal <span x-text="maxRangeDays"></span> hari dan tidak boleh melebihi hari ini.
+                </p>
+            </div>
+        </div>
+    </template>
+
+    <p class="ld-caption mb-3" x-show="!rangeError" x-text="periodHint"></p>
 
     {{-- 8.1 Ringkasan Keuangan: 4 kartu sesuai KEBUTUHAN_SISTEM.md #54 + REVISI_KONSEP_KEUANGAN.md Bagian 9.1 --}}
     <div class="row g-3 mb-3 align-items-stretch">
@@ -185,8 +201,8 @@
                     </select>
                     <template x-if="cmpA === 'rentang'">
                         <div class="d-flex gap-1 mt-1">
-                            <input type="date" class="form-control form-control-sm" x-model="cmpCustomA.start">
-                            <input type="date" class="form-control form-control-sm" x-model="cmpCustomA.end">
+                            <input type="date" class="form-control form-control-sm" :max="today" x-model="cmpCustomA.start">
+                            <input type="date" class="form-control form-control-sm" :max="today" x-model="cmpCustomA.end">
                         </div>
                     </template>
                 </div>
@@ -201,12 +217,13 @@
                     </select>
                     <template x-if="cmpB === 'rentang'">
                         <div class="d-flex gap-1 mt-1">
-                            <input type="date" class="form-control form-control-sm" x-model="cmpCustomB.start">
-                            <input type="date" class="form-control form-control-sm" x-model="cmpCustomB.end">
+                            <input type="date" class="form-control form-control-sm" :max="today" x-model="cmpCustomB.start">
+                            <input type="date" class="form-control form-control-sm" :max="today" x-model="cmpCustomB.end">
                         </div>
                     </template>
                 </div>
             </div>
+            <div class="ld-field-error mb-2" x-show="cmpError" x-text="cmpError" x-cloak></div>
             <x-data-table>
                 <table class="ld-compare">
                     <thead>
@@ -495,7 +512,7 @@
                     </template>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn-app-secondary btn" data-bs-dismiss="modal">Tutup</button>
+                    <x-button variant="secondary" icon="close" dismiss="modal">Tutup</x-button>
                 </div>
             </div>
         </div>

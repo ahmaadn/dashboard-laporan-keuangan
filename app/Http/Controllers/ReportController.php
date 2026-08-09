@@ -6,8 +6,10 @@ use App\Models\HppAdjustment;
 use App\Services\PeriodResolver;
 use App\Services\ReportService;
 use App\Support\AppTimezone;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 class ReportController extends Controller
 {
@@ -18,13 +20,73 @@ class ReportController extends Controller
 
     public function index(Request $request)
     {
-        $period = $request->query('period', 'bulan_ini');
-        $report = $this->reportService->summary($period, $request->query('start'), $request->query('end'));
+        $period = (string) $request->query('period', 'bulan_ini');
+        $start = $request->query('start');
+        $end = $request->query('end');
+
+        $filterError = $this->validatePeriodFilter($period, $start, $end);
+
+        // Rentang tidak valid: jangan tampilkan data sama sekali, hanya pesan validasi.
+        $report = $filterError === null
+            ? $this->reportService->summary($period, $start, $end)
+            : null;
 
         return view('reports.index', [
             'report' => $report,
             'periodOptions' => PeriodResolver::OPTIONS,
+            'filterError' => $filterError,
+            'tanggalHariIni' => AppTimezone::todayDateString(),
+            'maxRentangHari' => PeriodResolver::MAX_RANGE_DAYS,
         ]);
+    }
+
+    /**
+     * Validasi rentang tanggal laporan; mengembalikan pesan kesalahan atau null.
+     */
+    private function validatePeriodFilter(string $period, ?string $start, ?string $end): ?string
+    {
+        $today = AppTimezone::todayDateString();
+
+        if (! array_key_exists($period, PeriodResolver::OPTIONS)) {
+            return 'Periode yang dipilih tidak valid.';
+        }
+
+        $validator = Validator::make(
+            ['start' => $start, 'end' => $end],
+            [
+                'start' => ['nullable', 'date', 'before_or_equal:'.$today],
+                'end' => ['nullable', 'date', 'before_or_equal:'.$today],
+            ],
+            [
+                'start.date' => 'Tanggal awal tidak valid.',
+                'start.before_or_equal' => 'Tanggal awal tidak boleh melebihi hari ini.',
+                'end.date' => 'Tanggal akhir tidak valid.',
+                'end.before_or_equal' => 'Tanggal akhir tidak boleh melebihi hari ini.',
+            ],
+        );
+
+        if ($validator->fails()) {
+            return (string) $validator->errors()->first();
+        }
+
+        if (! $start || ! $end) {
+            return null;
+        }
+
+        $tz = AppTimezone::name();
+        $startDate = CarbonImmutable::parse($start, $tz)->startOfDay();
+        $endDate = CarbonImmutable::parse($end, $tz)->startOfDay();
+
+        if ($startDate->greaterThan($endDate)) {
+            return 'Tanggal awal tidak boleh melebihi tanggal akhir.';
+        }
+
+        $days = $startDate->diffInDays($endDate) + 1;
+        if ($days > PeriodResolver::MAX_RANGE_DAYS) {
+            return 'Rentang periode maksimal '.PeriodResolver::MAX_RANGE_DAYS.' hari; rentang dipilih '.$days.' hari.';
+        }
+
+        return null;
     }
 
     public function storeHppAdjustment(Request $request): JsonResponse

@@ -8,6 +8,7 @@ use App\Http\Controllers\IncomeController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\Reports\ExportController;
+use App\Http\Controllers\SalesReceiptController;
 use App\Http\Controllers\SalesReturnController;
 use App\Http\Controllers\StockController;
 use App\Http\Controllers\UserController;
@@ -44,6 +45,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/income', [IncomeController::class, 'store']);
     Route::match(['put', 'patch'], '/income/{income}', [IncomeController::class, 'update']);
     Route::delete('/income/{income}', [IncomeController::class, 'destroy']);
+
+    // Nota penjualan — bukti transaksi per nomor transaksi kasir
+    Route::get('/income/nota/{nomorTransaksi}', [SalesReceiptController::class, 'show'])->name('income.nota');
+    Route::get('/income/nota/{nomorTransaksi}/pdf', [SalesReceiptController::class, 'pdf'])->name('income.nota.pdf');
 
     // Retur penjualan (lihat Bagian 2.4 & 4 dokumen acuan)
     Route::get('/sales-returns', [SalesReturnController::class, 'index']);

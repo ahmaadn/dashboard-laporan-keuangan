@@ -2,6 +2,7 @@
 
 use App\Models\CapitalInjection;
 use App\Models\User;
+use App\Support\AppTimezone;
 
 describe('capital injection store', function () {
     it('allows admin to record capital injection', function () {
@@ -42,7 +43,7 @@ describe('capital injection store', function () {
         $admin = User::factory()->admin()->create();
 
         $this->actingAs($admin)->postJson('/capital', [
-            'tanggal' => now()->addDay()->toDateString(),
+            'tanggal' => AppTimezone::today()->addDays(2)->toDateString(),
             'nominal' => 100000,
         ])->assertStatus(422);
     });

@@ -10,6 +10,7 @@
 @section('content')
     <div x-data="reports()">
 
+        @if ($report)
         {{-- Offcanvas: rincian Pendapatan Bersih --}}
         <x-offcanvas-detail id="offPendapatanBersih" eyebrow="Rincian" title="Pendapatan Bersih">
             <div class="d-flex flex-column gap-3">
@@ -121,42 +122,61 @@
                 </p>
             </div>
         </x-offcanvas-detail>
+        @endif
 
         <x-page-header eyebrow="Reporting" title="Laporan Keuangan">
             <x-slot:actions>
-                <!-- <div class="btn-group" role="group">
-                        <button type="button" class="btn btn-app-secondary btn-sm"
-                            :class="viewMode === 'simple' ? 'active' : ''" @click="viewMode = 'simple'">Ringkas</button>
-                        <button type="button" class="btn btn-app-secondary btn-sm"
-                            :class="viewMode === 'detail' ? 'active' : ''" @click="viewMode = 'detail'">Rinci</button>
-                    </div> -->
-                <button type="button" class="btn btn-app-secondary btn-sm" @click="doExport('PDF')">Ekspor PDF</button>
-                <button type="button" class="btn btn-app-secondary btn-sm" @click="doExport('Excel')">Ekspor Excel</button>
+                <x-button variant="secondary" size="sm" icon="download" :disabled="! $report" @click="doExport('PDF')">Ekspor PDF</x-button>
+                <x-button variant="secondary" size="sm" icon="download" :disabled="! $report" @click="doExport('Excel')">Ekspor Excel</x-button>
             </x-slot:actions>
         </x-page-header>
+
+        @php
+            $activePeriod = $report['period'] ?? request()->query('period', 'bulan_ini');
+            $filterStart = $report['start'] ?? request()->query('start');
+            $filterEnd = $report['end'] ?? request()->query('end');
+        @endphp
 
         <div class="ld-filter-bar">
             <span class="ld-eyebrow d-none d-sm-inline">Periode</span>
             <div class="ld-segmented">
                 @foreach ($periodOptions as $value => $label)
                     <a href="?period={{ $value }}"
-                        class="{{ $report['period'] === $value ? 'is-active' : '' }}">{{ $label }}</a>
+                        class="{{ $activePeriod === $value ? 'is-active' : '' }}">{{ $label }}</a>
                 @endforeach
             </div>
-            @if ($report['period'] === 'rentang')
+            @if ($activePeriod === 'rentang')
                 <form class="d-flex align-items-center gap-2 ms-2" method="GET" action="/reports">
                     <input type="hidden" name="period" value="rentang">
-                    <input type="date" name="start" value="{{ $report['start'] }}" class="form-control form-control-sm"
-                        style="max-width: 150px">
+                    <input type="date" name="start" value="{{ $filterStart }}" max="{{ $tanggalHariIni }}"
+                        class="form-control form-control-sm" style="max-width: 150px">
                     <span class="ld-mono-caps">s/d</span>
-                    <input type="date" name="end" value="{{ $report['end'] }}" class="form-control form-control-sm"
-                        style="max-width: 150px">
-                    <button type="submit" class="btn btn-app-secondary btn-sm">Terapkan</button>
+                    <input type="date" name="end" value="{{ $filterEnd }}" max="{{ $tanggalHariIni }}"
+                        class="form-control form-control-sm" style="max-width: 150px">
+                    <x-button variant="secondary" size="sm" type="submit" icon="filter">Terapkan</x-button>
                 </form>
             @endif
-            <span class="ld-mono-caps ms-auto">{{ $report['rangeLabel'] }}</span>
+            @if ($report)
+                <span class="ld-mono-caps ms-auto">{{ $report['rangeLabel'] }}</span>
+            @endif
         </div>
 
+        @if ($filterError)
+            <x-app-card class="mb-4">
+                <div class="ld-validation-notice" role="alert">
+                    <span class="ld-validation-notice__icon" aria-hidden="true">!</span>
+                    <div>
+                        <p class="ld-validation-notice__title mb-1">Rentang tanggal tidak valid</p>
+                        <p class="mb-1">{{ $filterError }}</p>
+                        <p class="ld-caption mb-0">
+                            Perbaiki rentang tanggal terlebih dahulu. Maksimal {{ $maxRentangHari }} hari dan tidak boleh melebihi hari ini.
+                        </p>
+                    </div>
+                </div>
+            </x-app-card>
+        @endif
+
+        @if ($report)
         {{-- KPI Cards --}}
         <div class="row g-3 mb-4 align-items-stretch">
             <div class="col-md-6 col-xl-3 d-flex">
@@ -611,7 +631,7 @@
                     <div>
                         <label class="form-label">Tanggal</label>
                         <input type="date" name="tanggal" class="form-control form-control-sm"
-                            value="{{ today()->toDateString() }}" required>
+                            value="{{ today()->toDateString() }}" max="{{ $tanggalHariIni }}" required>
                     </div>
                     <div>
                         <label class="form-label">Nominal (+/-)</label>
@@ -622,7 +642,7 @@
                         <input type="text" name="keterangan" class="form-control form-control-sm">
                     </div>
                     <div class="full">
-                        <button type="submit" class="btn btn-app btn-sm">Tambah Koreksi</button>
+                        <x-button variant="app" size="sm" type="submit" icon="plus">Tambah Koreksi</x-button>
                     </div>
                 </form>
                 @if (count($report['hppPenyesuaian']) === 0)
@@ -660,6 +680,7 @@
                 @endif
             </x-app-card>
         </div>
+    @endif
     @endif
 
     <div class="ld-toast" x-show="exportToast" x-cloak x-transition x-text="exportToast"></div>

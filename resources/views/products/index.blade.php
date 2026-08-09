@@ -12,14 +12,7 @@
 
         <x-page-header eyebrow="Master Data" title="Data Produk">
             <x-slot:actions>
-                <button type="button" class="btn btn-brand" x-show="isAdmin" @click="openAdd()">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round">
-                        <line x1="12" y1="5" x2="12" y2="19" />
-                        <line x1="5" y1="12" x2="19" y2="12" />
-                    </svg>
-                    Tambah Produk
-                </button>
+                <x-button variant="brand" icon="plus" x-show="isAdmin" @click="openAdd()">Tambah Produk</x-button>
             </x-slot:actions>
         </x-page-header>
 
@@ -169,8 +162,8 @@
                     </div>
                 </div>
                 <div class="ld-modal__footer">
-                    <button type="button" class="btn btn-app-secondary" @click="modalOpen = false">Batal</button>
-                    <button type="button" class="btn btn-app" @click="save()">Simpan</button>
+                    <x-button variant="secondary" icon="close" @click="modalOpen = false">Batal</x-button>
+                    <x-button variant="app" icon="check" ::disabled="saving" ::class="saving ? 'is-loading' : ''" @click="save()">Simpan</x-button>
                 </div>
             </div>
         </div>
@@ -204,8 +197,8 @@
                     </div>
                 </div>
                 <div class="ld-modal__footer">
-                    <button type="button" class="btn btn-app-secondary" @click="stockModal = null">Batal</button>
-                    <button type="button" class="btn btn-app" @click="saveStock()">Simpan</button>
+                    <x-button variant="secondary" icon="close" @click="stockModal = null">Batal</x-button>
+                    <x-button variant="app" icon="check" @click="saveStock()">Simpan</x-button>
                 </div>
             </div>
         </div>
@@ -264,8 +257,8 @@
                         Data transaksi lama yang mereferensikan produk ini tidak akan terpengaruh.</p>
                 </div>
                 <div class="ld-modal__footer">
-                    <button type="button" class="btn btn-app-secondary" @click="deleteTarget = null">Batal</button>
-                    <button type="button" class="btn btn-danger" @click="doDelete()">Hapus</button>
+                    <x-button variant="secondary" icon="close" @click="deleteTarget = null">Batal</x-button>
+                    <x-button variant="danger" icon="trash" @click="doDelete()">Hapus</x-button>
                 </div>
             </div>
         </div>

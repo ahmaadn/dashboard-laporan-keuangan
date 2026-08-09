@@ -12,14 +12,7 @@
 
         <x-page-header eyebrow="Inventori" title="Kelola Stok">
             <x-slot:actions>
-                <button type="button" class="btn btn-brand" @click="openAdd()">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round">
-                        <line x1="12" y1="5" x2="12" y2="19" />
-                        <line x1="5" y1="12" x2="19" y2="12" />
-                    </svg>
-                    Produksi / Restok
-                </button>
+                <x-button variant="brand" icon="plus" @click="openAdd()">Produksi / Restok</x-button>
             </x-slot:actions>
         </x-page-header>
 
@@ -125,7 +118,7 @@
                         </div>
                         <div>
                             <label class="form-label">Tanggal <span class="req">*</span></label>
-                            <input type="date" class="form-control" :class="errors.tanggal ? 'ld-input-invalid' : ''"
+                            <input type="date" class="form-control" :max="today" :class="errors.tanggal ? 'ld-input-invalid' : ''"
                                 x-model="form.tanggal">
                             <div class="ld-field-error" x-show="errors.tanggal" x-text="errors.tanggal"></div>
                         </div>
@@ -143,8 +136,8 @@
                     </div>
                 </div>
                 <div class="ld-modal__footer">
-                    <button type="button" class="btn btn-app-secondary" @click="modalOpen = false">Batal</button>
-                    <button type="button" class="btn btn-app" @click="save()">Simpan</button>
+                    <x-button variant="secondary" icon="close" @click="modalOpen = false">Batal</x-button>
+                    <x-button variant="app" icon="check" ::disabled="saving" ::class="saving ? 'is-loading' : ''" @click="save()">Simpan</x-button>
                 </div>
             </div>
         </div>

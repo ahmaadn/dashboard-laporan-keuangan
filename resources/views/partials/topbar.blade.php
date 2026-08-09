@@ -13,7 +13,7 @@
         <span class="ld-mono-caps d-none d-sm-inline">{{ $currentUser['peran'] === 'admin' ? 'Admin' : 'Pegawai' }}</span>
         <form method="POST" action="/logout">
             @csrf
-            <button type="submit" class="btn-app-ghost btn-sm" aria-label="Keluar">Keluar</button>
+            <x-button variant="secondary" size="sm" type="submit" icon="logout" class="ld-logout-btn" aria-label="Keluar">Keluar</x-button>
         </form>
     </div>
 </header>

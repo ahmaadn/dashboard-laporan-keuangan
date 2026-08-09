@@ -4,6 +4,7 @@ use App\Http\Resources\IncomeResource;
 use App\Models\Income;
 use App\Models\Product;
 use App\Models\User;
+use App\Support\AppTimezone;
 
 describe('income store', function () {
     it('creates an income with computed total', function () {
@@ -142,7 +143,7 @@ describe('income store', function () {
         $pegawai = User::factory()->pegawai()->create();
 
         $this->actingAs($pegawai)->postJson('/income', [
-            'tanggal_transaksi' => now()->addDay()->toDateString(),
+            'tanggal_transaksi' => AppTimezone::today()->addDays(2)->toDateString(),
             'jenis_transaksi' => 'offline',
             'jumlah' => 1,
             'harga_satuan' => 100000,

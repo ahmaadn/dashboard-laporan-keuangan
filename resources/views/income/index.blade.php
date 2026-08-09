@@ -12,10 +12,7 @@
 
     <x-page-header eyebrow="Transaksi" title="Pemasukan">
         <x-slot:actions>
-            <button type="button" class="btn btn-brand" @click="openAdd()">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                Tambah Transaksi
-            </button>
+            <x-button variant="brand" icon="plus" @click="openAdd()">Tambah Transaksi</x-button>
         </x-slot:actions>
     </x-page-header>
 
@@ -74,6 +71,13 @@
                                 <span :class="statusBadgeClass(row)" x-text="statusLabel(row)" x-cloak></span>
                             </td>
                             <td class="text-end" @click.stop>
+                                <button
+                                    type="button"
+                                    class="ld-action-link"
+                                    x-show="row.nomor_transaksi"
+                                    @click="openNota(row)"
+                                    title="Lihat nota transaksi"
+                                >Nota</button>
                                 <button type="button" class="ld-action-link" x-show="!row.dihapus_pada" @click="openEdit(row)">Ubah</button>
                                 <button type="button" class="ld-action-link ld-action-link--danger" x-show="!row.dihapus_pada" @click="confirmDelete(row)">Hapus</button>
                                 <button
@@ -143,7 +147,7 @@
                     </div>
                     <div>
                         <label class="form-label">Tanggal Transaksi <span class="req">*</span></label>
-                        <input type="date" class="form-control" :class="errors.tanggal_transaksi ? 'ld-input-invalid' : ''" x-model="form.tanggal_transaksi">
+                        <input type="date" class="form-control" :max="today" :class="errors.tanggal_transaksi ? 'ld-input-invalid' : ''" x-model="form.tanggal_transaksi">
                         <div class="ld-field-error" x-show="errors.tanggal_transaksi" x-text="errors.tanggal_transaksi"></div>
                     </div>
 
@@ -258,7 +262,7 @@
                                         </div>
                                     </div>
                                     <div class="full">
-                                        <button type="button" class="btn btn-app-secondary btn-sm" @click="addCartLine()">+ Tambah ke keranjang</button>
+                                        <x-button variant="secondary" size="sm" icon="plus" @click="addCartLine()">Tambah ke keranjang</x-button>
                                     </div>
                                 </div>
                             </div>
@@ -276,8 +280,10 @@
                 </div>
             </div>
             <div class="ld-modal__footer">
-                <button type="button" class="btn btn-app-secondary" @click="modalOpen = false">Batal</button>
-                <button type="button" class="btn btn-app" :disabled="saving" @click="save()" x-text="editingId ? 'Simpan' : 'Simpan Transaksi'"></button>
+                <x-button variant="secondary" icon="close" @click="modalOpen = false">Batal</x-button>
+                <x-button variant="app" icon="check" ::disabled="saving" ::class="saving ? 'is-loading' : ''" @click="save()">
+                    <span x-text="editingId ? 'Simpan' : 'Simpan Transaksi'"></span>
+                </x-button>
             </div>
         </div>
     </div>
@@ -301,7 +307,7 @@
                 <div class="ld-form-grid">
                     <div>
                         <label class="form-label">Tanggal Retur <span class="req">*</span></label>
-                        <input type="date" class="form-control" :class="returErrors.tanggal ? 'ld-input-invalid' : ''" x-model="returForm.tanggal">
+                        <input type="date" class="form-control" :max="today" :class="returErrors.tanggal ? 'ld-input-invalid' : ''" x-model="returForm.tanggal">
                         <div class="ld-field-error" x-show="returErrors.tanggal" x-text="returErrors.tanggal"></div>
                     </div>
                     <div>
@@ -329,8 +335,8 @@
                 </div>
             </div>
             <div class="ld-modal__footer">
-                <button type="button" class="btn btn-app-secondary" @click="returModalOpen = false">Batal</button>
-                <button type="button" class="btn btn-app" :disabled="returSaving || returMax < 1" @click="saveRetur()">Simpan Retur</button>
+                <x-button variant="secondary" icon="close" @click="returModalOpen = false">Batal</x-button>
+                <x-button variant="app" icon="undo" ::disabled="returSaving || returMax < 1" ::class="returSaving ? 'is-loading' : ''" @click="saveRetur()">Simpan Retur</x-button>
             </div>
         </div>
     </div>
@@ -343,8 +349,83 @@
                 <p class="mb-0">Transaksi <strong x-text="deleteTarget ? produkNama(deleteTarget.id_produk) : ''"></strong> sebesar <strong x-text="deleteTarget ? rupiah(deleteTarget.total) : ''"></strong> akan dihapus (soft delete).</p>
             </div>
             <div class="ld-modal__footer">
-                <button type="button" class="btn btn-app-secondary" @click="deleteTarget = null">Batal</button>
-                <button type="button" class="btn btn-danger" @click="doDelete()">Hapus</button>
+                <x-button variant="secondary" icon="close" @click="deleteTarget = null">Batal</x-button>
+                <x-button variant="danger" icon="trash" @click="doDelete()">Hapus</x-button>
+            </div>
+        </div>
+    </div>
+
+    {{-- Nota penjualan (bukti transaksi) --}}
+    <div class="ld-modal" x-show="notaOpen" x-cloak @keydown.escape.window="notaOpen = false" @click.self="notaOpen = false" x-transition.opacity>
+        <div class="ld-modal__dialog" style="max-width: 480px" x-transition>
+            <div class="ld-modal__header">
+                <h5 class="ld-modal__title">Nota Penjualan</h5>
+                <button type="button" class="btn-close" @click="notaOpen = false" aria-label="Tutup"></button>
+            </div>
+            <div class="ld-modal__body">
+                <p class="ld-caption" x-show="notaLoading" x-cloak>Memuat nota…</p>
+                <div class="ld-field-error" x-show="notaError" x-text="notaError" x-cloak></div>
+
+                <div class="ld-nota" id="notaPrintArea" x-show="nota && !notaLoading" x-cloak>
+                    <div class="ld-nota__head">
+                        <div class="ld-nota__brand" x-text="nota?.usaha?.nama"></div>
+                        <div class="ld-nota__subtitle">Kerajinan Kulit</div>
+                        <div class="ld-nota__title">Nota Penjualan</div>
+                    </div>
+
+                    <dl class="ld-nota__meta">
+                        <div><dt>No. Transaksi</dt><dd class="tnum" x-text="nota?.nomor_transaksi"></dd></div>
+                        <div><dt>Tanggal</dt><dd x-text="nota?.tanggal_label"></dd></div>
+                        <div><dt>Jenis</dt><dd x-text="nota?.jenis_transaksi_label"></dd></div>
+                        <div><dt>Kasir</dt><dd x-text="nota?.kasir"></dd></div>
+                    </dl>
+
+                    <table class="ld-nota__items">
+                        <thead>
+                            <tr>
+                                <th>Produk</th>
+                                <th class="text-end">Qty</th>
+                                <th class="text-end">Harga</th>
+                                <th class="text-end">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="item in (nota?.items || [])" :key="item.id">
+                                <tr>
+                                    <td>
+                                        <span x-text="item.nama_produk"></span>
+                                        <span class="ld-nota__flag" x-show="item.harga_tipe === 'grosir'" x-cloak>grosir</span>
+                                        <div class="ld-nota__flag ld-nota__flag--retur" x-show="item.jumlah_diretur > 0" x-cloak>
+                                            Diretur <span class="tnum" x-text="item.jumlah_diretur"></span> pcs
+                                        </div>
+                                    </td>
+                                    <td class="text-end tnum" x-text="item.jumlah"></td>
+                                    <td class="text-end tnum" x-text="rupiah(item.harga_satuan)"></td>
+                                    <td class="text-end tnum" x-text="rupiah(item.subtotal)"></td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+
+                    <div class="ld-nota__totals">
+                        <div><span>Total Item</span><span class="tnum" x-text="(nota?.total_qty ?? 0) + ' pcs'"></span></div>
+                        <div><span>Subtotal</span><span class="tnum" x-text="rupiah(nota?.subtotal)"></span></div>
+                        <div class="ld-nota__retur" x-show="(nota?.total_retur ?? 0) > 0" x-cloak>
+                            <span>Retur</span><span class="tnum" x-text="'− ' + rupiah(nota?.total_retur)"></span>
+                        </div>
+                        <div class="ld-nota__grand"><span>TOTAL</span><span class="tnum" x-text="rupiah(nota?.total)"></span></div>
+                    </div>
+
+                    <p class="ld-nota__foot">
+                        Terima kasih atas pembelian Anda.<br>
+                        Simpan nota ini sebagai bukti transaksi untuk keperluan retur atau komplain.
+                    </p>
+                </div>
+            </div>
+            <div class="ld-modal__footer">
+                <x-button variant="secondary" icon="close" @click="notaOpen = false">Tutup</x-button>
+                <x-button variant="secondary" icon="print" ::disabled="!nota" @click="printNota()">Cetak</x-button>
+                <x-button variant="app" icon="download" ::disabled="!nota" @click="downloadNota()">Unduh PDF</x-button>
             </div>
         </div>
     </div>
