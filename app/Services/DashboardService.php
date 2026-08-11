@@ -60,9 +60,15 @@ final class DashboardService
         $series = $this->reports->trendForRange($startStr, $endStr, $buckets, $range['granularity']);
 
         $categoryBreakdown = $this->computeCategoryBreakdown($expenses);
-        $productAggregates = $this->computeProductAggregates($incomes);
+        $productAggregates = $this->computeProductAggregates($incomes, $this->returByProduct($startSql, $endSql));
         $topProducts = $productAggregates->take(5)->values()->all();
-        $productTrend = $this->computeProductTrend($incomes, $buckets, $range['granularity'], $topProducts);
+        $productTrend = $this->computeProductTrend(
+            $incomes,
+            $buckets,
+            $range['granularity'],
+            $topProducts,
+            $this->returByProductPerDate($startSql, $endSql),
+        );
 
         return [
             'range' => [
@@ -251,8 +257,70 @@ final class DashboardService
         })->sortByDesc('value')->values()->all();
     }
 
-    /** @return Collection<int, array<string, mixed>> */
-    private function computeProductAggregates($incomes)
+    /**
+     * Retur penjualan per produk pada rentang aktif, dipakai untuk menghitung
+     * ranking produk terlaris secara neto (bruto − retur).
+     *
+     * Retur yang penjualan asalnya sudah di-soft-delete diabaikan, sejalan
+     * dengan {@see ReportService::metricsForRange()}.
+     *
+     * @return array<int, array{qty: int, nominal: int}>
+     */
+    private function returByProduct(string $startSql, string $endSql): array
+    {
+        return SalesReturn::query()
+            ->whereBetween('sales_returns.tanggal', [$startSql, $endSql])
+            ->join('incomes', 'incomes.id', '=', 'sales_returns.income_id')
+            ->whereNull('incomes.deleted_at')
+            ->selectRaw('COALESCE(sales_returns.product_id, incomes.product_id) as product_id, SUM(sales_returns.jumlah) as retur_qty, SUM(sales_returns.nominal_retur) as retur_nominal')
+            ->groupByRaw('COALESCE(sales_returns.product_id, incomes.product_id)')
+            ->get()
+            ->reduce(function (array $carry, $row): array {
+                if ($row->product_id !== null) {
+                    $carry[(int) $row->product_id] = [
+                        'qty' => (int) $row->retur_qty,
+                        'nominal' => (int) $row->retur_nominal,
+                    ];
+                }
+
+                return $carry;
+            }, []);
+    }
+
+    /**
+     * Nominal retur per kombinasi produk + tanggal untuk grafik tren produk.
+     * Key: "{productId}|{Y-m-d}".
+     *
+     * @return array<string, int>
+     */
+    private function returByProductPerDate(string $startSql, string $endSql): array
+    {
+        return SalesReturn::query()
+            ->whereBetween('sales_returns.tanggal', [$startSql, $endSql])
+            ->join('incomes', 'incomes.id', '=', 'sales_returns.income_id')
+            ->whereNull('incomes.deleted_at')
+            ->selectRaw('COALESCE(sales_returns.product_id, incomes.product_id) as product_id, sales_returns.tanggal as tanggal, SUM(sales_returns.nominal_retur) as retur_nominal')
+            ->groupByRaw('COALESCE(sales_returns.product_id, incomes.product_id), sales_returns.tanggal')
+            ->get()
+            ->reduce(function (array $carry, $row): array {
+                if ($row->product_id === null) {
+                    return $carry;
+                }
+
+                $tanggal = substr((string) $row->tanggal, 0, 10);
+                $carry[((int) $row->product_id).'|'.$tanggal] = (int) $row->retur_nominal;
+
+                return $carry;
+            }, []);
+    }
+
+    /**
+     * Agregat penjualan per produk secara neto: qty dan total sudah dikurangi retur.
+     *
+     * @param  array<int, array{qty: int, nominal: int}>  $returByProduct
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function computeProductAggregates($incomes, array $returByProduct = [])
     {
         $byProduct = [];
         foreach ($incomes as $r) {
@@ -266,39 +334,75 @@ final class DashboardService
                     'nama' => $r->product?->nama ?? 'Tanpa produk',
                     'stok' => (int) ($r->product?->stok ?? 0),
                     'stok_rendah' => (bool) ($r->product?->isStokRendah() ?? false),
+                    'qty_bruto' => 0,
+                    'total_bruto' => 0,
+                    'retur_qty' => 0,
+                    'retur_total' => 0,
                     'qty' => 0,
                     'total' => 0,
                 ];
             }
-            $byProduct[$pid]['qty'] += (int) $r->jumlah;
-            $byProduct[$pid]['total'] += (int) $r->total;
+            $byProduct[$pid]['qty_bruto'] += (int) $r->jumlah;
+            $byProduct[$pid]['total_bruto'] += (int) $r->total;
         }
 
-        return collect($byProduct)->sortByDesc('qty')->values();
+        foreach ($byProduct as $pid => $row) {
+            $returQty = (int) ($returByProduct[$pid]['qty'] ?? 0);
+            $returNominal = (int) ($returByProduct[$pid]['nominal'] ?? 0);
+
+            $byProduct[$pid]['retur_qty'] = $returQty;
+            $byProduct[$pid]['retur_total'] = $returNominal;
+            $byProduct[$pid]['qty'] = max(0, $row['qty_bruto'] - $returQty);
+            $byProduct[$pid]['total'] = max(0, $row['total_bruto'] - $returNominal);
+        }
+
+        return collect($byProduct)
+            ->sortByDesc(fn (array $row) => [$row['qty'], $row['total']])
+            ->values();
     }
 
     /**
+     * Tren nilai penjualan per produk, sudah dikurangi retur pada bucket yang sama.
+     *
+     * Catatan: pada granularitas "hour" (filter Hari Ini) bucket penjualan memakai
+     * `created_at`, sedangkan retur hanya menyimpan kolom tanggal (tanpa jam),
+     * sehingga retur tidak dipetakan ke bucket jam mana pun.
+     *
      * @param  array<int, array<string, mixed>>  $buckets
      * @param  array<int, array<string, mixed>>  $topProducts
+     * @param  array<string, int>  $returPerDate
      * @return array{labels: array<int, string>, datasets: array<int, array<string, mixed>>}
      */
-    private function computeProductTrend($incomes, array $buckets, string $granularity, array $topProducts): array
+    private function computeProductTrend($incomes, array $buckets, string $granularity, array $topProducts, array $returPerDate = []): array
     {
         $labels = array_column($buckets, 'label');
         $datasets = [];
 
-        foreach ($topProducts as $i => $p) {
+        foreach ($topProducts as $p) {
             $data = array_fill(0, count($buckets), 0);
+
             foreach ($incomes as $r) {
                 if ($r->product_id !== $p['id']) {
                     continue;
                 }
-                $key = $this->bucketKey($r, $granularity);
-                $idx = $this->bucketIndex($buckets, $key);
+                $idx = $this->bucketIndex($buckets, $this->bucketKey($r, $granularity));
                 if ($idx !== null) {
                     $data[$idx] += (int) $r->total;
                 }
             }
+
+            foreach ($returPerDate as $key => $nominal) {
+                [$productId, $tanggal] = explode('|', $key, 2);
+                if ((int) $productId !== (int) $p['id']) {
+                    continue;
+                }
+                $bucketKey = $granularity === 'month' ? substr($tanggal, 0, 7) : $tanggal;
+                $idx = $this->bucketIndex($buckets, $bucketKey);
+                if ($idx !== null) {
+                    $data[$idx] = max(0, $data[$idx] - $nominal);
+                }
+            }
+
             $datasets[] = [
                 'label' => $p['nama'].($p['stok_rendah'] ? ' · rendah' : ''),
                 'productId' => $p['id'],

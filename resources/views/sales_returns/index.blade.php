@@ -12,7 +12,7 @@
 
         <x-page-header eyebrow="Transaksi" title="Retur Penjualan">
             <x-slot:actions>
-                <x-button variant="brand" icon="plus" @click="openAdd()">Catat Retur</x-button>
+                <x-button variant="success" icon="plus" @click="openAdd()">Catat Retur</x-button>
             </x-slot:actions>
         </x-page-header>
 

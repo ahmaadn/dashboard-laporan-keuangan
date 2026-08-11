@@ -3,6 +3,7 @@
 use App\Models\User;
 use App\Services\PeriodResolver;
 use App\Support\AppTimezone;
+use Carbon\CarbonImmutable;
 
 /**
  * Batas "hari ini" mengikuti timezone tampilan (Asia/Jakarta), bukan UTC.
@@ -78,6 +79,34 @@ describe('dashboard period filter validation', function () {
             ->assertStatus(422)
             ->assertJsonValidationErrors('period');
     });
+
+    it('rejects a start date before the business start year', function () {
+        $admin = User::factory()->admin()->create();
+
+        $response = $this->actingAs($admin)->getJson(
+            '/api/dashboard?period=rentang&start=2017-12-31&end='.$this->hariIni->toDateString(),
+        );
+
+        $response->assertStatus(422)->assertJsonValidationErrors('start');
+        expect($response->json('errors.start.0'))->toContain(AppTimezone::TANGGAL_MULAI_USAHA);
+    });
+
+    it('rejects an end date before the business start year', function () {
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)->getJson('/api/dashboard?period=rentang&start=2017-01-01&end=2017-06-30')
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['start', 'end']);
+    });
+
+    it('accepts the business start date itself as the lower bound', function () {
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)->getJson(
+            '/api/dashboard?period=rentang&start='.AppTimezone::TANGGAL_MULAI_USAHA
+            .'&end='.CarbonImmutable::parse(AppTimezone::TANGGAL_MULAI_USAHA)->addDays(10)->toDateString(),
+        )->assertOk();
+    });
 });
 
 describe('dashboard comparison validation', function () {
@@ -112,6 +141,18 @@ describe('dashboard comparison validation', function () {
         $admin = User::factory()->admin()->create();
 
         $this->actingAs($admin)->getJson('/api/dashboard/compare?a=bulan_lalu&b=bulan_ini')->assertOk();
+    });
+
+    it('rejects a pre-2018 date on either comparison side', function () {
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)->getJson(
+            '/api/dashboard/compare?a=rentang&b=bulan_ini&a_start=2017-05-01&a_end=2017-05-31',
+        )->assertStatus(422)->assertJsonValidationErrors(['a_start', 'a_end']);
+
+        $this->actingAs($admin)->getJson(
+            '/api/dashboard/compare?a=bulan_ini&b=rentang&b_start=2017-05-01&b_end=2017-05-31',
+        )->assertStatus(422)->assertJsonValidationErrors(['b_start', 'b_end']);
     });
 });
 
@@ -161,5 +202,60 @@ describe('report period filter validation', function () {
         $response->assertOk();
         expect($response->viewData('filterError'))->toBeNull();
         expect($response->viewData('report'))->toBeArray();
+    });
+
+    it('shows a validation message for a date before the business start year', function () {
+        $admin = User::factory()->admin()->create();
+
+        $response = $this->actingAs($admin)->get(
+            '/reports?period=rentang&start=2017-01-01&end='.$this->hariIni->toDateString(),
+        );
+
+        $response->assertOk()->assertViewHas('report', null);
+        expect($response->viewData('filterError'))->toContain(AppTimezone::TANGGAL_MULAI_USAHA);
+    });
+
+    it('exposes the minimum date to the view for the date inputs', function () {
+        $admin = User::factory()->admin()->create();
+
+        // Input tanggal hanya dirender pada mode rentang kustom.
+        $response = $this->actingAs($admin)->get(
+            '/reports?period=rentang&start='.$this->hariIni->subDays(7)->toDateString().'&end='.$this->hariIni->toDateString(),
+        );
+
+        $response->assertOk()->assertViewHas('tanggalMulaiUsaha', AppTimezone::TANGGAL_MULAI_USAHA);
+        $response->assertSee('min="'.AppTimezone::TANGGAL_MULAI_USAHA.'"', false);
+    });
+
+    it('offers a clear action that returns to the default period', function () {
+        $admin = User::factory()->admin()->create();
+
+        $response = $this->actingAs($admin)->get(
+            '/reports?period=rentang&start='.$this->hariIni->subDays(7)->toDateString().'&end='.$this->hariIni->toDateString(),
+        );
+
+        $response->assertOk()->assertSee('Bersihkan');
+        $response->assertSee('?period=bulan_ini', false);
+    });
+});
+
+describe('dashboard period filter view', function () {
+    it('passes the business start date into the alpine component', function () {
+        $admin = User::factory()->admin()->create();
+
+        $response = $this->actingAs($admin)->get('/dashboard');
+
+        $response->assertOk()->assertViewHas('tanggalMulaiUsaha', AppTimezone::TANGGAL_MULAI_USAHA);
+        $response->assertSee(AppTimezone::TANGGAL_MULAI_USAHA, false);
+    });
+
+    it('renders the clear range controls', function () {
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)->get('/dashboard')
+            ->assertOk()
+            ->assertSee('clearRange()', false)
+            ->assertSee('clearCompareA()', false)
+            ->assertSee('clearCompareB()', false);
     });
 });

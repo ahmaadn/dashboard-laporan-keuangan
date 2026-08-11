@@ -39,15 +39,35 @@ final class ExportRenderer
         $cells[] = $this->row(['Arus Kas Bersih (bukan laba)', (int) ($report['arusKasBersih'] ?? 0), '', '', '']);
         $cells[] = $this->row([]);
 
-        $cells[] = $this->row(['Pemasukan per Produk', '', '', '', '']);
-        $cells[] = $this->row(['Produk', 'Qty', 'HPP', 'Total', 'Laba Kotor']);
+        $cells[] = $this->row(['Pemasukan per Produk', '', '', '', '', '']);
+        $cells[] = $this->row(['Produk', 'Qty Bersih', 'Qty Retur', 'Retur', 'HPP', 'Total Bersih', 'Laba Kotor']);
         foreach ($report['incomeByProduct'] as $row) {
             $cells[] = $this->row([
                 $row['nama'],
-                (int) $row['qty'],
+                (int) ($row['net_qty'] ?? $row['qty']),
+                (int) ($row['retur_qty'] ?? 0),
+                (int) ($row['retur'] ?? 0),
                 (int) ($row['hpp'] ?? 0),
-                (int) $row['total'],
+                (int) ($row['net_total'] ?? $row['total']),
                 (int) ($row['laba_kotor'] ?? 0),
+            ]);
+        }
+        $cells[] = $this->row([]);
+
+        $cells[] = $this->row(['Kanal Penjualan', '', '', '', '', '']);
+        $cells[] = $this->row(['Kanal', 'Transaksi', 'Unit', 'Bruto', 'Retur', 'Bersih']);
+        foreach (['online' => 'Online', 'offline' => 'Offline'] as $channelKey => $channelLabel) {
+            $channel = $report['incomeByChannel'][$channelKey] ?? null;
+            if ($channel === null) {
+                continue;
+            }
+            $cells[] = $this->row([
+                $channelLabel,
+                (int) $channel['count'],
+                (int) $channel['qty'],
+                (int) $channel['total'],
+                (int) $channel['retur'],
+                (int) $channel['net_total'],
             ]);
         }
         $cells[] = $this->row([]);
@@ -61,6 +81,32 @@ final class ExportRenderer
                 (int) $row['total'],
                 '',
                 '',
+            ]);
+        }
+
+        $journal = $report['cashJournal'] ?? null;
+        if ($journal !== null && count($journal['entries']) > 0) {
+            $cells[] = $this->row([]);
+            $cells[] = $this->row(['Jurnal Arus Kas Bersih', '', '', '', '', '']);
+            $cells[] = $this->row(['Tanggal', 'Kategori', 'Keterangan', 'Masuk', 'Keluar', 'Saldo']);
+            $cells[] = $this->row(['Saldo awal', '', '', '', '', (int) $journal['saldoAwal']]);
+            foreach ($journal['entries'] as $entry) {
+                $cells[] = $this->row([
+                    (string) $entry['tanggal'],
+                    (string) $entry['kategori'],
+                    (string) $entry['keterangan'],
+                    (int) $entry['masuk'],
+                    (int) $entry['keluar'],
+                    (int) $entry['saldo'],
+                ]);
+            }
+            $cells[] = $this->row([
+                'Total',
+                '',
+                '',
+                (int) $journal['totalMasuk'],
+                (int) $journal['totalKeluar'],
+                (int) $journal['saldoAkhir'],
             ]);
         }
 

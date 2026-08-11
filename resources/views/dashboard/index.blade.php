@@ -8,7 +8,7 @@
 @endpush
 
 @section('content')
-<div x-data="dashboard(@js($produk), @js($kategoriProduk), @js($kategoriPengeluaran), @js($pengguna), @js($tanggalHariIni), @js($maxRentangHari))">
+<div x-data="dashboard(@js($produk), @js($kategoriProduk), @js($kategoriPengeluaran), @js($pengguna), @js($tanggalHariIni), @js($maxRentangHari), @js($tanggalMulaiUsaha))">
 
     {{-- 8.7 Filter Periode --}}
     <div class="ld-filter-bar">
@@ -23,10 +23,12 @@
         <template x-if="period === 'rentang'">
             <div class="d-flex align-items-center gap-2 ms-2">
                 <input type="date" class="form-control form-control-sm" style="max-width: 150px"
-                    :max="today" :class="rangeError ? 'ld-input-invalid' : ''" x-model="rangeStart">
+                    :min="minDate" :max="today" :class="rangeError ? 'ld-input-invalid' : ''" x-model="rangeStart">
                 <span class="ld-mono-caps">s/d</span>
                 <input type="date" class="form-control form-control-sm" style="max-width: 150px"
-                    :max="today" :class="rangeError ? 'ld-input-invalid' : ''" x-model="rangeEnd">
+                    :min="minDate" :max="today" :class="rangeError ? 'ld-input-invalid' : ''" x-model="rangeEnd">
+                <x-button variant="secondary" size="sm" icon="close" @click="clearRange()"
+                    title="Bersihkan rentang dan kembali ke Bulan Ini">Bersihkan</x-button>
             </div>
         </template>
         <span class="ld-mono-caps ms-auto" x-show="!rangeError" x-text="periodLabel"></span>
@@ -85,7 +87,7 @@
                 <div class="d-flex flex-column gap-3">
                     <div>
                         <div class="d-flex justify-content-between align-items-baseline">
-                            <span class="ld-body-sm">Online</span>
+                            <span class="ld-badge-channel ld-badge-channel--online">Online</span>
                             <span class="tnum fw-medium" x-text="fmt((incomeByChannel.online && incomeByChannel.online.net_total) || (incomeByChannel.online && incomeByChannel.online.total) || 0)"></span>
                         </div>
                         <div class="ld-channel-bar" role="img" :aria-label="'Online '+ (channelPercent('online')) +'%'">
@@ -95,7 +97,7 @@
                     </div>
                     <div>
                         <div class="d-flex justify-content-between align-items-baseline">
-                            <span class="ld-body-sm">Offline</span>
+                            <span class="ld-badge-channel ld-badge-channel--offline">Offline</span>
                             <span class="tnum fw-medium" x-text="fmt((incomeByChannel.offline && incomeByChannel.offline.net_total) || (incomeByChannel.offline && incomeByChannel.offline.total) || 0)"></span>
                         </div>
                         <div class="ld-channel-bar" role="img" :aria-label="'Offline '+ (channelPercent('offline')) +'%'">
@@ -175,7 +177,7 @@
                             <span class="ld-rank-item__no tnum" x-text="(i + 1)"></span>
                             <span class="flex-grow-1 text-start">
                                 <span class="d-block fw-medium" x-text="p.nama"></span>
-                                <span class="ld-mono-caps" x-text="p.qty + ' unit terjual' + (p.stok_rendah ? ' · stok rendah' : '')"></span>
+                                <span class="ld-mono-caps" x-text="p.qty + ' unit terjual' + (p.retur_qty ? ' · ' + p.retur_qty + ' diretur' : '') + (p.stok_rendah ? ' · stok rendah' : '')"></span>
                             </span>
                             <span class="ld-mono-caps tnum text-danger ms-2" x-show="p.stok_rendah" x-cloak title="Stok di bawah minimum">!</span>
                             <span class="tnum fw-medium" x-text="fmt(p.total)"></span>
@@ -201,8 +203,10 @@
                     </select>
                     <template x-if="cmpA === 'rentang'">
                         <div class="d-flex gap-1 mt-1">
-                            <input type="date" class="form-control form-control-sm" :max="today" x-model="cmpCustomA.start">
-                            <input type="date" class="form-control form-control-sm" :max="today" x-model="cmpCustomA.end">
+                            <input type="date" class="form-control form-control-sm" :min="minDate" :max="today" x-model="cmpCustomA.start">
+                            <input type="date" class="form-control form-control-sm" :min="minDate" :max="today" x-model="cmpCustomA.end">
+                            <x-button variant="secondary" size="sm" icon="close" iconOnly
+                                @click="clearCompareA()" title="Bersihkan rentang Periode A" />
                         </div>
                     </template>
                 </div>
@@ -217,8 +221,10 @@
                     </select>
                     <template x-if="cmpB === 'rentang'">
                         <div class="d-flex gap-1 mt-1">
-                            <input type="date" class="form-control form-control-sm" :max="today" x-model="cmpCustomB.start">
-                            <input type="date" class="form-control form-control-sm" :max="today" x-model="cmpCustomB.end">
+                            <input type="date" class="form-control form-control-sm" :min="minDate" :max="today" x-model="cmpCustomB.start">
+                            <input type="date" class="form-control form-control-sm" :min="minDate" :max="today" x-model="cmpCustomB.end">
+                            <x-button variant="secondary" size="sm" icon="close" iconOnly
+                                @click="clearCompareB()" title="Bersihkan rentang Periode B" />
                         </div>
                     </template>
                 </div>
@@ -281,7 +287,11 @@
                         <button type="button" class="ld-recent-item" @click="showTransaction(r)">
                             <span class="ld-recent-item__type">
                                 <span class="badge" :class="r.type === 'pemasukan' ? 'badge-success-soft' : 'badge-error-soft'" x-text="r.type === 'pemasukan' ? 'Masuk' : 'Keluar'"></span>
-                                <span class="badge-neutral ms-1" x-show="r.type === 'pemasukan' && r.jenis_transaksi" x-text="r.jenis_transaksi === 'online' ? 'Online' : 'Offline'"></span>
+                                            <span
+                                                class="ms-1"
+                                                :class="'ld-badge-channel ld-badge-channel--' + (r.jenis_transaksi === 'online' ? 'online' : 'offline')"
+                                                x-show="r.type === 'pemasukan' && r.jenis_transaksi"
+                                                x-text="r.jenis_transaksi === 'online' ? 'Online' : 'Offline'"></span>
                             </span>
                             <span class="flex-grow-1 text-start">
                                 <span class="d-block fw-medium tnum" x-text="fmt(r.amount)"></span>

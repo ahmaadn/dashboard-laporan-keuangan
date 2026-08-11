@@ -12,7 +12,7 @@
 
     <x-page-header eyebrow="Transaksi" title="Pengeluaran">
         <x-slot:actions>
-            <x-button variant="brand" icon="plus" @click="openAdd()">Tambah Transaksi</x-button>
+            <x-button variant="success" icon="plus" @click="openAdd()">Tambah Transaksi</x-button>
         </x-slot:actions>
     </x-page-header>
 
@@ -69,7 +69,7 @@
                                 <span class="badge-success-soft" x-show="!row.dihapus_pada" x-cloak>Aktif</span>
                             </td>
                             <td class="text-end">
-                                <button type="button" class="ld-action-link" x-show="!row.dihapus_pada" @click="openEdit(row)">Ubah</button>
+                                    <button type="button" class="ld-action-link ld-action-link--primary" x-show="!row.dihapus_pada" @click="openEdit(row)">Ubah</button>
                                 <button type="button" class="ld-action-link ld-action-link--danger" x-show="!row.dihapus_pada" @click="confirmDelete(row)">Hapus</button>
                                 <span x-show="row.dihapus_pada" class="ld-mono-caps">—</span>
                             </td>

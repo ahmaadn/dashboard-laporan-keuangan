@@ -23,7 +23,7 @@ class ExpenseRequest extends BaseFormRequest
     {
         return [
             'id_kategori' => ['required', 'exists:expense_categories,id'],
-            'tanggal_transaksi' => ['required', 'date', 'before_or_equal:'.AppTimezone::todayDateString()],
+            'tanggal_transaksi' => ['required', 'date', 'after_or_equal:'.AppTimezone::TANGGAL_MULAI_USAHA, 'before_or_equal:'.AppTimezone::todayDateString()],
             'nominal' => ['required', 'numeric', 'min:0.01'],
             'keterangan' => ['nullable', 'string', 'max:255'],
         ];
@@ -35,6 +35,7 @@ class ExpenseRequest extends BaseFormRequest
             'id_kategori.required' => 'Kategori wajib dipilih.',
             'id_kategori.exists' => 'Kategori tidak valid.',
             'tanggal_transaksi.required' => 'Tanggal transaksi wajib diisi.',
+            'tanggal_transaksi.after_or_equal' => 'Tanggal transaksi tidak boleh sebelum '.AppTimezone::TANGGAL_MULAI_USAHA.' (usaha mulai beroperasi 2018).',
             'tanggal_transaksi.before_or_equal' => 'Tanggal transaksi tidak boleh melebihi hari ini.',
             'nominal.required' => 'Nominal wajib diisi.',
             'nominal.min' => 'Nominal harus lebih besar dari 0.',

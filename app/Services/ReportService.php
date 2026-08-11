@@ -10,6 +10,7 @@ use App\Models\Income;
 use App\Models\Product;
 use App\Models\SalesReturn;
 use App\Support\Format;
+use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 
 /**
@@ -34,10 +35,16 @@ use Carbon\CarbonInterface;
  * - returKeluar          = returTotal                             [uang dikembalikan ke pelanggan]
  * - arusKasKeluar        = pengeluaranKas + returKeluar
  * - arusKasBersih        = arusKasMasuk - arusKasKeluar
+ *
+ * {@see self::cashJournal()} memecah arusKasBersih menjadi jurnal per transaksi
+ * dengan saldo berjalan, memakai definisi kas yang sama.
  */
 final class ReportService
 {
-    public function __construct(private readonly PeriodResolver $periods) {}
+    public function __construct(
+        private readonly PeriodResolver $periods,
+        private readonly CashBalanceService $cashBalance,
+    ) {}
 
     /** @return array<string, mixed> */
     public function summary(string $period, ?string $start = null, ?string $end = null): array
@@ -63,8 +70,8 @@ final class ReportService
             ->whereBetween('sales_returns.tanggal', [$startSql, $endSql])
             ->join('incomes', 'incomes.id', '=', 'sales_returns.income_id')
             ->whereNull('incomes.deleted_at')
-            ->selectRaw('sales_returns.product_id, SUM(sales_returns.nominal_retur) as retur_nominal, SUM(sales_returns.jumlah) as retur_qty')
-            ->groupBy('sales_returns.product_id')
+            ->selectRaw('COALESCE(sales_returns.product_id, incomes.product_id) as product_id, SUM(sales_returns.nominal_retur) as retur_nominal, SUM(sales_returns.jumlah) as retur_qty')
+            ->groupByRaw('COALESCE(sales_returns.product_id, incomes.product_id)')
             ->get()
             ->keyBy('product_id');
 
@@ -83,11 +90,15 @@ final class ReportService
             $hpp = max(0, $hppKotor - $hppRetur);
             $returRow = $returByProduct[$r->product_id] ?? null;
             $retur = (float) ($returRow->retur_nominal ?? 0);
+            $returQty = (int) ($returRow->retur_qty ?? 0);
+            $qty = (int) $r->qty;
 
             return [
                 'id' => $r->product_id,
                 'nama' => $r->product_id ? ($productNames[$r->product_id] ?? 'Tanpa produk') : 'Tanpa produk',
-                'qty' => (int) $r->qty,
+                'qty' => $qty,
+                'retur_qty' => $returQty,
+                'net_qty' => max(0, $qty - $returQty),
                 'count' => (int) $r->count,
                 'total' => (int) $total,
                 'retur' => (int) $retur,
@@ -142,6 +153,7 @@ final class ReportService
         $returChannelRows = SalesReturn::query()
             ->whereBetween('sales_returns.tanggal', [$startSql, $endSql])
             ->join('incomes', 'incomes.id', '=', 'sales_returns.income_id')
+            ->whereNull('incomes.deleted_at')
             ->selectRaw('incomes.jenis_transaksi, SUM(sales_returns.nominal_retur) as retur_nominal')
             ->groupBy('incomes.jenis_transaksi')
             ->pluck('retur_nominal', 'incomes.jenis_transaksi');
@@ -189,6 +201,7 @@ final class ReportService
             'incomeByChannel' => $incomeByChannel,
             'hppPenyesuaian' => $hppAdjustments,
             'capitalInjections' => $capitalInjections,
+            'cashJournal' => $this->cashJournal($startStr, $endStr),
             'hasData' => $metrics['penjualan'] > 0 || $metrics['pengeluaranKas'] > 0
                 || abs($metrics['hppPenyesuaianTotal']) > 0 || $metrics['returTotal'] > 0
                 || $metrics['modalTotal'] > 0,
@@ -292,6 +305,127 @@ final class ReportService
             'arusKasMasuk' => $arusKasMasuk,
             'arusKasKeluar' => $arusKasKeluar,
             'arusKasBersih' => $arusKasBersih,
+        ];
+    }
+
+    /**
+     * Jurnal arus kas: seluruh mutasi kas pada periode, terurut tanggal, dengan
+     * saldo berjalan. Baris jurnal mengikuti definisi arus kas di kelas ini —
+     * kas masuk = penjualan + modal; kas keluar = pengeluaran + retur.
+     *
+     * Saldo awal dihitung kumulatif sebelum tanggal mulai, sehingga saldo akhir
+     * jurnal sama dengan saldo kas kumulatif pada akhir periode.
+     *
+     * @return array{
+     *   saldoAwal: int,
+     *   saldoAkhir: int,
+     *   totalMasuk: int,
+     *   totalKeluar: int,
+     *   entries: array<int, array<string, mixed>>
+     * }
+     */
+    public function cashJournal(string $startStr, string $endStr): array
+    {
+        [$startSql, $endSql] = $this->sqlDateBounds($startStr, $endStr);
+
+        $entries = [];
+
+        foreach (Income::query()
+            ->with('product')
+            ->whereBetween('tanggal_transaksi', [$startSql, $endSql])
+            ->orderBy('tanggal_transaksi')
+            ->orderBy('id')
+            ->get() as $row) {
+            $entries[] = [
+                'tanggal' => $row->tanggal_transaksi?->format('Y-m-d'),
+                'jenis' => 'masuk',
+                'sumber' => 'penjualan',
+                'kategori' => 'Penjualan',
+                'keterangan' => trim(($row->nomor_transaksi ? $row->nomor_transaksi.' · ' : '')
+                    .($row->product?->nama ?? 'Tanpa produk')),
+                'masuk' => (int) $row->total,
+                'keluar' => 0,
+            ];
+        }
+
+        foreach (CapitalInjection::query()
+            ->whereBetween('tanggal', [$startSql, $endSql])
+            ->orderBy('tanggal')
+            ->orderBy('id')
+            ->get() as $row) {
+            $entries[] = [
+                'tanggal' => $row->tanggal?->format('Y-m-d'),
+                'jenis' => 'masuk',
+                'sumber' => 'modal',
+                'kategori' => 'Modal / Setoran Pemilik',
+                'keterangan' => $row->keterangan ?: 'Setoran modal',
+                'masuk' => (int) $row->nominal,
+                'keluar' => 0,
+            ];
+        }
+
+        foreach (Expense::query()
+            ->with('category')
+            ->whereBetween('tanggal_transaksi', [$startSql, $endSql])
+            ->orderBy('tanggal_transaksi')
+            ->orderBy('id')
+            ->get() as $row) {
+            $entries[] = [
+                'tanggal' => $row->tanggal_transaksi?->format('Y-m-d'),
+                'jenis' => 'keluar',
+                'sumber' => $row->category?->is_bahan_baku ? 'bahan_baku' : 'operasional',
+                'kategori' => $row->category?->nama ?? 'Lainnya',
+                'keterangan' => $row->keterangan ?: '—',
+                'masuk' => 0,
+                'keluar' => (int) $row->nominal,
+            ];
+        }
+
+        foreach (SalesReturn::query()
+            ->join('incomes', 'incomes.id', '=', 'sales_returns.income_id')
+            ->whereNull('incomes.deleted_at')
+            ->whereBetween('sales_returns.tanggal', [$startSql, $endSql])
+            ->orderBy('sales_returns.tanggal')
+            ->orderBy('sales_returns.id')
+            ->select('sales_returns.*')
+            ->with('product')
+            ->get() as $row) {
+            $entries[] = [
+                'tanggal' => $row->tanggal?->format('Y-m-d'),
+                'jenis' => 'keluar',
+                'sumber' => 'retur',
+                'kategori' => 'Retur Penjualan',
+                'keterangan' => trim(($row->product?->nama ?? 'Tanpa produk')
+                    .' · '.$row->jumlah.' unit'
+                    .($row->alasan ? ' · '.$row->alasan : '')),
+                'masuk' => 0,
+                'keluar' => (int) $row->nominal_retur,
+            ];
+        }
+
+        usort($entries, fn (array $a, array $b) => [$a['tanggal'], $a['jenis']] <=> [$b['tanggal'], $b['jenis']]);
+
+        $saldoAwal = (int) $this->cashBalance->saldo(
+            CarbonImmutable::parse($startStr)->subDay()->toDateString(),
+        );
+
+        $saldo = $saldoAwal;
+        $totalMasuk = 0;
+        $totalKeluar = 0;
+
+        foreach ($entries as $i => $entry) {
+            $saldo += $entry['masuk'] - $entry['keluar'];
+            $totalMasuk += $entry['masuk'];
+            $totalKeluar += $entry['keluar'];
+            $entries[$i]['saldo'] = $saldo;
+        }
+
+        return [
+            'saldoAwal' => $saldoAwal,
+            'saldoAkhir' => $saldo,
+            'totalMasuk' => $totalMasuk,
+            'totalKeluar' => $totalKeluar,
+            'entries' => $entries,
         ];
     }
 

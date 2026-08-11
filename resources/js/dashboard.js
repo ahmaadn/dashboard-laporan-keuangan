@@ -31,7 +31,7 @@ function rupiah(n) {
     return 'Rp ' + Number(n || 0).toLocaleString('id-ID');
 }
 
-const dashboard = (produk, kategoriProduk, kategoriPengeluaran, pengguna, tanggalHariIni, maxRangeDays) => {
+const dashboard = (produk, kategoriProduk, kategoriPengeluaran, pengguna, tanggalHariIni, maxRangeDays, tanggalMulaiUsaha) => {
     const _charts = { trend: null, category: null, product: null };
 
     return {
@@ -43,6 +43,7 @@ const dashboard = (produk, kategoriProduk, kategoriPengeluaran, pengguna, tangga
     serverData: null,
 
     today: tanggalHariIni || dateStr(new Date()),
+    minDate: tanggalMulaiUsaha || '2018-01-01',
     maxRangeDays: maxRangeDays || 731,
     rangeError: '',
     cmpError: '',
@@ -90,14 +91,18 @@ const dashboard = (produk, kategoriProduk, kategoriPengeluaran, pengguna, tangga
     },
 
     /**
-     * Validasi rentang: tidak melebihi hari ini, awal <= akhir, dan panjang
-     * rentang tidak melebihi batas maksimum. Mengembalikan pesan atau ''.
+     * Validasi rentang: tidak mendahului tanggal berdirinya usaha, tidak melebihi
+     * hari ini, awal <= akhir, dan panjang rentang tidak melebihi batas maksimum.
+     * Mengembalikan pesan atau ''.
      */
     validateRange(start, end, label = '') {
         if (!start || !end) {
             return '';
         }
         const prefix = label ? `Periode ${label}: ` : '';
+        if (start < this.minDate || end < this.minDate) {
+            return `${prefix}Tanggal tidak boleh sebelum ${this.minDate}.`;
+        }
         if (start > this.today || end > this.today) {
             return `${prefix}Tanggal tidak boleh melebihi hari ini.`;
         }
@@ -192,6 +197,37 @@ const dashboard = (produk, kategoriProduk, kategoriPengeluaran, pengguna, tangga
             this.rangeStart = dateStr(startOfMonth(today));
             this.rangeEnd = dateStr(today);
         }
+    },
+
+    /**
+     * Kembalikan filter periode global ke default (Bulan Ini).
+     * `$watch('period')` yang memicu fetchData(), jangan panggil manual.
+     */
+    clearRange() {
+        const today = new Date();
+        this.rangeStart = dateStr(startOfMonth(today));
+        this.rangeEnd = dateStr(today);
+        this.rangeError = '';
+        this.period = 'bulan_ini';
+    },
+
+    /** Kembalikan Periode A pembanding ke default (Bulan Lalu). */
+    clearCompareA() {
+        const today = new Date();
+        this.cmpCustomA = {
+            start: dateStr(startOfMonth(addMonths(today, -1))),
+            end: dateStr(endOfMonth(addMonths(today, -1))),
+        };
+        this.cmpError = '';
+        this.cmpA = 'bulan_lalu';
+    },
+
+    /** Kembalikan Periode B pembanding ke default (Bulan Ini). */
+    clearCompareB() {
+        const today = new Date();
+        this.cmpCustomB = { start: dateStr(startOfMonth(today)), end: dateStr(today) };
+        this.cmpError = '';
+        this.cmpB = 'bulan_ini';
     },
 
     get periodLabel() {

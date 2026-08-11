@@ -16,7 +16,7 @@ class StockRestockRequest extends BaseFormRequest
     {
         return [
             'id_produk' => ['required', 'integer', Rule::exists('products', 'id')],
-            'tanggal' => ['required', 'date', 'before_or_equal:'.AppTimezone::todayDateString()],
+            'tanggal' => ['required', 'date', 'after_or_equal:'.AppTimezone::TANGGAL_MULAI_USAHA, 'before_or_equal:'.AppTimezone::todayDateString()],
             'jumlah' => ['required', 'integer', 'min:1'],
             'keterangan' => ['nullable', 'string', 'max:255'],
         ];
@@ -28,6 +28,8 @@ class StockRestockRequest extends BaseFormRequest
             'id_produk.required' => 'Produk wajib dipilih.',
             'id_produk.exists' => 'Produk tidak ditemukan.',
             'tanggal.required' => 'Tanggal produksi/restok wajib diisi.',
+            'tanggal.after_or_equal' => 'Tanggal produksi/restok tidak boleh sebelum '.AppTimezone::TANGGAL_MULAI_USAHA.' (usaha mulai beroperasi 2018).',
+            'tanggal.before_or_equal' => 'Tanggal produksi/restok tidak boleh melebihi hari ini.',
             'jumlah.required' => 'Jumlah produksi/restok wajib diisi.',
             'jumlah.min' => 'Jumlah minimal 1.',
         ];

@@ -23,7 +23,7 @@ class IncomeRequest extends BaseFormRequest
     {
         if ($this->isMultiItem()) {
             return [
-                'tanggal_transaksi' => ['required', 'date', 'before_or_equal:'.AppTimezone::todayDateString()],
+                'tanggal_transaksi' => ['required', 'date', 'after_or_equal:'.AppTimezone::TANGGAL_MULAI_USAHA, 'before_or_equal:'.AppTimezone::todayDateString()],
                 'jenis_transaksi' => ['required', Rule::in(['online', 'offline'])],
                 'keterangan' => ['nullable', 'string', 'max:255'],
                 'items' => ['required', 'array', 'min:1'],
@@ -36,7 +36,7 @@ class IncomeRequest extends BaseFormRequest
 
         return [
             'id_produk' => ['nullable', 'exists:products,id'],
-            'tanggal_transaksi' => ['required', 'date', 'before_or_equal:'.AppTimezone::todayDateString()],
+            'tanggal_transaksi' => ['required', 'date', 'after_or_equal:'.AppTimezone::TANGGAL_MULAI_USAHA, 'before_or_equal:'.AppTimezone::todayDateString()],
             'jenis_transaksi' => ['required', Rule::in(['online', 'offline'])],
             'jumlah' => ['required', 'integer', 'min:1'],
             'harga_satuan' => ['required', 'numeric', 'min:0'],
@@ -49,6 +49,7 @@ class IncomeRequest extends BaseFormRequest
     {
         return [
             'tanggal_transaksi.required' => 'Tanggal transaksi wajib diisi.',
+            'tanggal_transaksi.after_or_equal' => 'Tanggal transaksi tidak boleh sebelum '.AppTimezone::TANGGAL_MULAI_USAHA.' (usaha mulai beroperasi 2018).',
             'tanggal_transaksi.before_or_equal' => 'Tanggal transaksi tidak boleh melebihi hari ini.',
             'jenis_transaksi.required' => 'Jenis transaksi wajib dipilih.',
             'jenis_transaksi.in' => 'Jenis transaksi harus Online atau Offline.',

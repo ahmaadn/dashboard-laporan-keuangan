@@ -12,7 +12,7 @@
 
         <x-page-header eyebrow="Master Data" title="Data Produk">
             <x-slot:actions>
-                <x-button variant="brand" icon="plus" x-show="isAdmin" @click="openAdd()">Tambah Produk</x-button>
+                <x-button variant="success" icon="plus" x-show="isAdmin" @click="openAdd()">Tambah Produk</x-button>
             </x-slot:actions>
         </x-page-header>
 
@@ -57,15 +57,15 @@
                                         x-cloak>Nonaktif</span>
                                 </td>
                                 <td class="text-end" x-cloak>
-                                    <button type="button" class="ld-action-link" x-show="!row.dihapus_pada"
+                                    <button type="button" class="ld-action-link ld-action-link--neutral" x-show="!row.dihapus_pada"
                                         @click="openMovements(row)">Riwayat</button>
                                     <template x-if="isAdmin && !row.dihapus_pada">
                                         <span>
-                                            <button type="button" class="ld-action-link" @click="openStock(row, 'restok')">+
+                                            <button type="button" class="ld-action-link ld-action-link--success" @click="openStock(row, 'restok')">+
                                                 Stok</button>
-                                            <button type="button" class="ld-action-link"
+                                            <button type="button" class="ld-action-link ld-action-link--neutral"
                                                 @click="openStock(row, 'koreksi')">Sesuaikan</button>
-                                            <button type="button" class="ld-action-link"
+                                            <button type="button" class="ld-action-link ld-action-link--primary"
                                                 @click="openEdit(row)">Ubah</button>
                                             <button type="button" class="ld-action-link ld-action-link--danger"
                                                 @click="confirmDelete(row)">Hapus</button>

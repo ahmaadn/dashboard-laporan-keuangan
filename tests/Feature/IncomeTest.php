@@ -160,6 +160,58 @@ describe('income store', function () {
             'harga_satuan' => 100000,
         ])->assertStatus(422);
     });
+
+    it('blocks dates before the business start year', function () {
+        $pegawai = User::factory()->pegawai()->create();
+
+        $response = $this->actingAs($pegawai)->postJson('/income', [
+            'tanggal_transaksi' => '2017-12-31',
+            'jenis_transaksi' => 'offline',
+            'jumlah' => 1,
+            'harga_satuan' => 100000,
+        ]);
+
+        $response->assertStatus(422)->assertJsonValidationErrors('tanggal_transaksi');
+        expect($response->json('errors.tanggal_transaksi.0'))
+            ->toContain(AppTimezone::TANGGAL_MULAI_USAHA);
+    });
+
+    it('accepts the business start date itself', function () {
+        $pegawai = User::factory()->pegawai()->create();
+
+        $this->actingAs($pegawai)->postJson('/income', [
+            'tanggal_transaksi' => AppTimezone::TANGGAL_MULAI_USAHA,
+            'jenis_transaksi' => 'offline',
+            'jumlah' => 1,
+            'harga_satuan' => 100000,
+        ])->assertCreated();
+    });
+
+    it('requires a valid sales channel', function () {
+        $pegawai = User::factory()->pegawai()->create();
+
+        $this->actingAs($pegawai)->postJson('/income', [
+            'tanggal_transaksi' => today()->toDateString(),
+            'jenis_transaksi' => 'marketplace',
+            'jumlah' => 1,
+            'harga_satuan' => 100000,
+        ])->assertStatus(422)->assertJsonValidationErrors('jenis_transaksi');
+    });
+
+    it('stores an online sale on the online channel', function () {
+        $pegawai = User::factory()->pegawai()->create();
+        $product = Product::factory()->create(['harga' => 100000, 'stok' => 10]);
+
+        $this->actingAs($pegawai)->postJson('/income', [
+            'id_produk' => $product->id,
+            'tanggal_transaksi' => today()->toDateString(),
+            'jenis_transaksi' => 'online',
+            'jumlah' => 2,
+            'harga_satuan' => 100000,
+        ])->assertCreated();
+
+        expect(Income::first()->jenis_transaksi->value)->toBe('online');
+    });
 });
 
 describe('income ownership', function () {

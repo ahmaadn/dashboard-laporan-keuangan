@@ -4,6 +4,7 @@ use App\Models\Expense;
 use App\Models\ExpenseCategory;
 use App\Models\Income;
 use App\Models\Product;
+use App\Models\SalesReturn;
 use App\Models\User;
 use App\Support\AppTimezone;
 
@@ -108,7 +109,139 @@ describe('dashboard data endpoint', function () {
 
         $this->actingAs($pegawai)->getJson('/api/dashboard')->assertForbidden();
     });
+});
 
+describe('produk terlaris netto retur', function () {
+    it('subtracts returned quantity and value from the best-seller ranking', function () {
+        $admin = User::factory()->admin()->create();
+        $product = Product::factory()->create();
+        $hariIni = AppTimezone::todayDateString();
+
+        $income = Income::factory()->create([
+            'product_id' => $product->id,
+            'user_id' => $admin->id,
+            'tanggal_transaksi' => $hariIni,
+            'jumlah' => 10,
+            'harga_satuan' => 10000,
+            'total' => 100000,
+        ]);
+
+        SalesReturn::factory()->create([
+            'income_id' => $income->id,
+            'product_id' => $product->id,
+            'user_id' => $admin->id,
+            'tanggal' => $hariIni,
+            'jumlah' => 3,
+            'nominal_retur' => 30000,
+        ]);
+
+        $response = $this->actingAs($admin)->getJson('/api/dashboard?period=bulan_ini');
+
+        $response->assertOk();
+        expect($response->json('topProducts.0.qty'))->toBe(7);
+        expect($response->json('topProducts.0.total'))->toBe(70000);
+        expect($response->json('topProducts.0.retur_qty'))->toBe(3);
+        expect($response->json('topProducts.0.retur_total'))->toBe(30000);
+    });
+
+    it('keeps the ranking at zero instead of negative when everything is returned', function () {
+        $admin = User::factory()->admin()->create();
+        $product = Product::factory()->create();
+        $hariIni = AppTimezone::todayDateString();
+
+        $income = Income::factory()->create([
+            'product_id' => $product->id,
+            'user_id' => $admin->id,
+            'tanggal_transaksi' => $hariIni,
+            'jumlah' => 4,
+            'harga_satuan' => 25000,
+            'total' => 100000,
+        ]);
+
+        SalesReturn::factory()->create([
+            'income_id' => $income->id,
+            'product_id' => $product->id,
+            'user_id' => $admin->id,
+            'tanggal' => $hariIni,
+            'jumlah' => 4,
+            'nominal_retur' => 100000,
+        ]);
+
+        $response = $this->actingAs($admin)->getJson('/api/dashboard?period=bulan_ini');
+
+        expect($response->json('topProducts.0.qty'))->toBe(0);
+        expect($response->json('topProducts.0.total'))->toBe(0);
+    });
+
+    it('ignores returns whose originating sale was soft-deleted', function () {
+        $admin = User::factory()->admin()->create();
+        $product = Product::factory()->create();
+        $hariIni = AppTimezone::todayDateString();
+
+        $deleted = Income::factory()->create([
+            'product_id' => $product->id,
+            'user_id' => $admin->id,
+            'tanggal_transaksi' => $hariIni,
+            'jumlah' => 5,
+            'harga_satuan' => 10000,
+            'total' => 50000,
+        ]);
+        SalesReturn::factory()->create([
+            'income_id' => $deleted->id,
+            'product_id' => $product->id,
+            'user_id' => $admin->id,
+            'tanggal' => $hariIni,
+            'jumlah' => 2,
+            'nominal_retur' => 20000,
+        ]);
+        $deleted->delete();
+
+        Income::factory()->create([
+            'product_id' => $product->id,
+            'user_id' => $admin->id,
+            'tanggal_transaksi' => $hariIni,
+            'jumlah' => 6,
+            'harga_satuan' => 10000,
+            'total' => 60000,
+        ]);
+
+        $response = $this->actingAs($admin)->getJson('/api/dashboard?period=bulan_ini');
+
+        // Retur dari penjualan yang dihapus tidak boleh mengurangi ranking.
+        expect($response->json('topProducts.0.qty'))->toBe(6);
+        expect($response->json('topProducts.0.total'))->toBe(60000);
+        expect($response->json('topProducts.0.retur_qty'))->toBe(0);
+    });
+
+    it('subtracts returns from the product sales trend series', function () {
+        $admin = User::factory()->admin()->create();
+        $product = Product::factory()->create();
+        $hariIni = AppTimezone::todayDateString();
+
+        $income = Income::factory()->create([
+            'product_id' => $product->id,
+            'user_id' => $admin->id,
+            'tanggal_transaksi' => $hariIni,
+            'jumlah' => 10,
+            'harga_satuan' => 10000,
+            'total' => 100000,
+        ]);
+        SalesReturn::factory()->create([
+            'income_id' => $income->id,
+            'product_id' => $product->id,
+            'user_id' => $admin->id,
+            'tanggal' => $hariIni,
+            'jumlah' => 3,
+            'nominal_retur' => 30000,
+        ]);
+
+        $response = $this->actingAs($admin)->getJson('/api/dashboard?period=bulan_ini');
+
+        expect(array_sum($response->json('productTrend.datasets.0.data')))->toBe(70000);
+    });
+});
+
+describe('dashboard recent activity', function () {
     it('returns recent transactions across all time', function () {
         $admin = User::factory()->admin()->create();
         $product = Product::factory()->create();

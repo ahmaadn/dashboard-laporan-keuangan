@@ -19,7 +19,7 @@ class SalesReturnRequest extends BaseFormRequest
     {
         return [
             'id_penjualan' => ['required', 'integer', Rule::exists('incomes', 'id')->whereNull('deleted_at')],
-            'tanggal' => ['required', 'date', 'before_or_equal:'.AppTimezone::todayDateString()],
+            'tanggal' => ['required', 'date', 'after_or_equal:'.AppTimezone::TANGGAL_MULAI_USAHA, 'before_or_equal:'.AppTimezone::todayDateString()],
             'jumlah' => ['required', 'integer', 'min:1'],
             'alasan' => ['nullable', 'string', 'max:255'],
         ];
@@ -31,6 +31,7 @@ class SalesReturnRequest extends BaseFormRequest
             'id_penjualan.required' => 'Penjualan asal wajib dipilih.',
             'id_penjualan.exists' => 'Penjualan asal tidak ditemukan.',
             'tanggal.required' => 'Tanggal retur wajib diisi.',
+            'tanggal.after_or_equal' => 'Tanggal retur tidak boleh sebelum '.AppTimezone::TANGGAL_MULAI_USAHA.' (usaha mulai beroperasi 2018).',
             'tanggal.before_or_equal' => 'Tanggal retur tidak boleh melebihi hari ini.',
             'jumlah.required' => 'Jumlah retur wajib diisi.',
             'jumlah.min' => 'Jumlah retur minimal 1.',

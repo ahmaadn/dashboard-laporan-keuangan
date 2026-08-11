@@ -12,7 +12,7 @@
 
         <x-page-header eyebrow="Pembiayaan" title="Modal / Setoran Pemilik">
             <x-slot:actions>
-                <x-button variant="brand" icon="plus" @click="openAdd()">Catat Setoran</x-button>
+                <x-button variant="success" icon="plus" @click="openAdd()">Catat Setoran</x-button>
             </x-slot:actions>
         </x-page-header>
 

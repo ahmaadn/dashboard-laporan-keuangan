@@ -28,8 +28,8 @@ class PeriodFilterRequest extends BaseFormRequest
 
         return [
             'period' => ['nullable', 'string', 'in:'.implode(',', array_keys(PeriodResolver::OPTIONS))],
-            'start' => ['nullable', 'date', 'before_or_equal:'.$today],
-            'end' => ['nullable', 'date', 'before_or_equal:'.$today],
+            'start' => ['nullable', 'date', 'after_or_equal:'.AppTimezone::TANGGAL_MULAI_USAHA, 'before_or_equal:'.$today],
+            'end' => ['nullable', 'date', 'after_or_equal:'.AppTimezone::TANGGAL_MULAI_USAHA, 'before_or_equal:'.$today],
         ];
     }
 
@@ -38,8 +38,10 @@ class PeriodFilterRequest extends BaseFormRequest
         return [
             'period.in' => 'Periode yang dipilih tidak valid.',
             'start.date' => 'Tanggal awal tidak valid.',
+            'start.after_or_equal' => 'Tanggal awal tidak boleh sebelum '.AppTimezone::TANGGAL_MULAI_USAHA.'.',
             'start.before_or_equal' => 'Tanggal awal tidak boleh melebihi hari ini.',
             'end.date' => 'Tanggal akhir tidak valid.',
+            'end.after_or_equal' => 'Tanggal akhir tidak boleh sebelum '.AppTimezone::TANGGAL_MULAI_USAHA.'.',
             'end.before_or_equal' => 'Tanggal akhir tidak boleh melebihi hari ini.',
         ];
     }

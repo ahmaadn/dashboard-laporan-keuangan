@@ -12,7 +12,7 @@
 
         <x-page-header eyebrow="Inventori" title="Kelola Stok">
             <x-slot:actions>
-                <x-button variant="brand" icon="plus" @click="openAdd()">Produksi / Restok</x-button>
+                <x-button variant="success" icon="plus" @click="openAdd()">Produksi / Restok</x-button>
             </x-slot:actions>
         </x-page-header>
 

@@ -36,6 +36,7 @@ class ReportController extends Controller
             'periodOptions' => PeriodResolver::OPTIONS,
             'filterError' => $filterError,
             'tanggalHariIni' => AppTimezone::todayDateString(),
+            'tanggalMulaiUsaha' => AppTimezone::TANGGAL_MULAI_USAHA,
             'maxRentangHari' => PeriodResolver::MAX_RANGE_DAYS,
         ]);
     }
@@ -54,13 +55,15 @@ class ReportController extends Controller
         $validator = Validator::make(
             ['start' => $start, 'end' => $end],
             [
-                'start' => ['nullable', 'date', 'before_or_equal:'.$today],
-                'end' => ['nullable', 'date', 'before_or_equal:'.$today],
+                'start' => ['nullable', 'date', 'after_or_equal:'.AppTimezone::TANGGAL_MULAI_USAHA, 'before_or_equal:'.$today],
+                'end' => ['nullable', 'date', 'after_or_equal:'.AppTimezone::TANGGAL_MULAI_USAHA, 'before_or_equal:'.$today],
             ],
             [
                 'start.date' => 'Tanggal awal tidak valid.',
+                'start.after_or_equal' => 'Tanggal awal tidak boleh sebelum '.AppTimezone::TANGGAL_MULAI_USAHA.'.',
                 'start.before_or_equal' => 'Tanggal awal tidak boleh melebihi hari ini.',
                 'end.date' => 'Tanggal akhir tidak valid.',
+                'end.after_or_equal' => 'Tanggal akhir tidak boleh sebelum '.AppTimezone::TANGGAL_MULAI_USAHA.'.',
                 'end.before_or_equal' => 'Tanggal akhir tidak boleh melebihi hari ini.',
             ],
         );
@@ -92,11 +95,12 @@ class ReportController extends Controller
     public function storeHppAdjustment(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'tanggal' => ['required', 'date', 'before_or_equal:'.AppTimezone::todayDateString()],
+            'tanggal' => ['required', 'date', 'after_or_equal:'.AppTimezone::TANGGAL_MULAI_USAHA, 'before_or_equal:'.AppTimezone::todayDateString()],
             'nominal' => ['required', 'numeric'],
             'keterangan' => ['nullable', 'string', 'max:255'],
         ], [
             'tanggal.required' => 'Tanggal wajib diisi.',
+            'tanggal.after_or_equal' => 'Tanggal tidak boleh sebelum '.AppTimezone::TANGGAL_MULAI_USAHA.' (usaha mulai beroperasi 2018).',
             'tanggal.before_or_equal' => 'Tanggal tidak boleh melebihi hari ini.',
             'nominal.required' => 'Nominal wajib diisi.',
         ]);

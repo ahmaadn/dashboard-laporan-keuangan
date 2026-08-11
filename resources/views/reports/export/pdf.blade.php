@@ -23,6 +23,10 @@
         thead th { background: #f3f4f6; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: #4b5563; }
         .num { text-align: right; }
         .fw-medium { font-weight: 500; }
+        table.data .profit { color: #047857; }
+        table.data .loss { color: #b91c1c; }
+        tfoot td { border-top: 1px solid #9ca3af; font-weight: 600; }
+        .ld-print__note { color: #6b7280; font-size: 10px; margin-top: 5px; }
         .ld-print__foot { margin-top: 24px; color: #9ca3af; font-size: 10px; border-top: 1px solid #e5e7eb; padding-top: 6px; }
     </style>
 </head>
@@ -36,8 +40,8 @@
     <table class="ld-print__summary">
         <tr>
             <td>
-                <div class="label">Penjualan</div>
-                <div class="value">{{ \App\Support\Format::rupiah($report['penjualan']) }}</div>
+                <div class="label">Pendapatan Bersih</div>
+                <div class="value">{{ \App\Support\Format::rupiah($report['pendapatanBersih']) }}</div>
             </td>
             <td>
                 <div class="label">HPP</div>
@@ -54,6 +58,77 @@
         </tr>
     </table>
 
+    <section>
+        <h2>Struktur Laba Rugi</h2>
+        <table class="data">
+            <tbody>
+                <tr>
+                    <td>Penjualan (kotor)</td>
+                    <td class="num">{{ \App\Support\Format::rupiah($report['penjualan']) }}</td>
+                </tr>
+                <tr>
+                    <td>− Retur Penjualan</td>
+                    <td class="num loss">{{ \App\Support\Format::rupiah($report['returTotal']) }}</td>
+                </tr>
+                <tr>
+                    <td class="fw-medium">= Pendapatan Bersih</td>
+                    <td class="num fw-medium">{{ \App\Support\Format::rupiah($report['pendapatanBersih']) }}</td>
+                </tr>
+                <tr>
+                    <td>− HPP (produk terjual)</td>
+                    <td class="num loss">{{ \App\Support\Format::rupiah($report['hppPenjualan']) }}</td>
+                </tr>
+                @if ($report['hppPenyesuaianTotal'] != 0)
+                    <tr>
+                        <td>−/+ Penyesuaian HPP</td>
+                        <td class="num">{{ \App\Support\Format::rupiah($report['hppPenyesuaianTotal']) }}</td>
+                    </tr>
+                @endif
+                <tr>
+                    <td class="fw-medium">= Laba Kotor</td>
+                    <td class="num fw-medium">{{ \App\Support\Format::rupiah($report['labaKotor']) }}</td>
+                </tr>
+                <tr>
+                    <td>− Beban Operasional</td>
+                    <td class="num loss">{{ \App\Support\Format::rupiah($report['biayaOperasional']) }}</td>
+                </tr>
+                <tr>
+                    <td class="fw-medium">= Laba Bersih</td>
+                    <td class="num fw-medium {{ $report['labaBersih'] >= 0 ? 'profit' : 'loss' }}">{{ \App\Support\Format::rupiah($report['labaBersih']) }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <section>
+        <h2>Kanal Penjualan</h2>
+        <table class="data">
+            <thead>
+                <tr>
+                    <th>Kanal</th>
+                    <th class="num">Transaksi</th>
+                    <th class="num">Unit</th>
+                    <th class="num">Bruto</th>
+                    <th class="num">Retur</th>
+                    <th class="num">Bersih</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (['online' => 'Online', 'offline' => 'Offline'] as $channelKey => $channelLabel)
+                    @php $channel = $report['incomeByChannel'][$channelKey]; @endphp
+                    <tr>
+                        <td class="fw-medium">{{ $channelLabel }}</td>
+                        <td class="num">{{ $channel['count'] }}</td>
+                        <td class="num">{{ $channel['qty'] }}</td>
+                        <td class="num">{{ \App\Support\Format::rupiah($channel['total']) }}</td>
+                        <td class="num loss">{{ $channel['retur'] > 0 ? \App\Support\Format::rupiah($channel['retur']) : '—' }}</td>
+                        <td class="num fw-medium">{{ \App\Support\Format::rupiah($channel['net_total']) }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </section>
+
     @if ($report['incomeByProduct'])
         <section>
             <h2>Pemasukan per Produk</h2>
@@ -61,9 +136,10 @@
                 <thead>
                     <tr>
                         <th>Produk</th>
-                        <th class="num">Qty</th>
+                        <th class="num">Qty Bersih</th>
+                        <th class="num">Retur</th>
                         <th class="num">HPP</th>
-                        <th class="num">Total</th>
+                        <th class="num">Total Bersih</th>
                         <th class="num">Laba Kotor</th>
                     </tr>
                 </thead>
@@ -71,14 +147,20 @@
                     @foreach ($report['incomeByProduct'] as $row)
                         <tr>
                             <td class="fw-medium">{{ $row['nama'] }}</td>
-                            <td class="num">{{ $row['qty'] }}</td>
+                            <td class="num">
+                                {{ $row['net_qty'] ?? $row['qty'] }}{{ ($row['retur_qty'] ?? 0) > 0 ? ' (dari '.$row['qty'].')' : '' }}
+                            </td>
+                            <td class="num loss">
+                                {{ ($row['retur'] ?? 0) > 0 ? \App\Support\Format::rupiah($row['retur']).' / '.($row['retur_qty'] ?? 0).' unit' : '—' }}
+                            </td>
                             <td class="num">{{ \App\Support\Format::rupiah($row['hpp'] ?? 0) }}</td>
-                            <td class="num fw-medium">{{ \App\Support\Format::rupiah($row['total']) }}</td>
+                            <td class="num fw-medium">{{ \App\Support\Format::rupiah($row['net_total'] ?? $row['total']) }}</td>
                             <td class="num">{{ \App\Support\Format::rupiah($row['laba_kotor'] ?? 0) }}</td>
                         </tr>
                     @endforeach
                 </tbody>
             </table>
+            <p class="ld-print__note">Qty dan total sudah dikurangi retur pada periode ini.</p>
         </section>
     @endif
 
@@ -103,6 +185,50 @@
                     @endforeach
                 </tbody>
             </table>
+        </section>
+    @endif
+
+    @php $journal = $report['cashJournal']; @endphp
+    @if (count($journal['entries']) > 0)
+        <section>
+            <h2>Jurnal Arus Kas Bersih</h2>
+            <table class="data">
+                <thead>
+                    <tr>
+                        <th>Tanggal</th>
+                        <th>Kategori</th>
+                        <th>Keterangan</th>
+                        <th class="num">Masuk</th>
+                        <th class="num">Keluar</th>
+                        <th class="num">Saldo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="5" class="fw-medium">Saldo awal periode</td>
+                        <td class="num fw-medium">{{ \App\Support\Format::rupiah($journal['saldoAwal']) }}</td>
+                    </tr>
+                    @foreach ($journal['entries'] as $entry)
+                        <tr>
+                            <td>{{ \App\Support\Format::tanggal($entry['tanggal']) }}</td>
+                            <td>{{ $entry['kategori'] }}</td>
+                            <td>{{ $entry['keterangan'] }}</td>
+                            <td class="num profit">{{ $entry['masuk'] > 0 ? \App\Support\Format::rupiah($entry['masuk']) : '—' }}</td>
+                            <td class="num loss">{{ $entry['keluar'] > 0 ? \App\Support\Format::rupiah($entry['keluar']) : '—' }}</td>
+                            <td class="num fw-medium">{{ \App\Support\Format::rupiah($entry['saldo']) }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="3">Total mutasi &amp; saldo akhir</td>
+                        <td class="num profit">{{ \App\Support\Format::rupiah($journal['totalMasuk']) }}</td>
+                        <td class="num loss">{{ \App\Support\Format::rupiah($journal['totalKeluar']) }}</td>
+                        <td class="num">{{ \App\Support\Format::rupiah($journal['saldoAkhir']) }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+            <p class="ld-print__note">Kas masuk = penjualan + modal; kas keluar = pengeluaran + retur. Arus kas riil, bukan laba.</p>
         </section>
     @endif
 

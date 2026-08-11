@@ -12,7 +12,7 @@
 
     <x-page-header eyebrow="Transaksi" title="Pemasukan">
         <x-slot:actions>
-            <x-button variant="brand" icon="plus" @click="openAdd()">Tambah Transaksi</x-button>
+            <x-button variant="success" icon="plus" @click="openAdd()">Tambah Transaksi</x-button>
         </x-slot:actions>
     </x-page-header>
 
@@ -60,7 +60,9 @@
                             <td class="tnum ld-mono-caps" x-text="row.nomor_transaksi || '—'"></td>
                             <td class="tnum" x-text="row.tanggal_transaksi.split('-').reverse().join('/')"></td>
                             <td>
-                                <span class="badge-neutral" x-text="row.jenis_transaksi_label || (row.jenis_transaksi === 'online' ? 'Online' : 'Offline')"></span>
+                                <span
+                                    :class="'ld-badge-channel ld-badge-channel--' + (row.jenis_transaksi === 'online' ? 'online' : 'offline')"
+                                    x-text="row.jenis_transaksi_label || (row.jenis_transaksi === 'online' ? 'Online' : 'Offline')"></span>
                             </td>
                             <td x-text="produkNama(row.id_produk)"></td>
                             <td class="text-end tnum" x-text="row.jumlah"></td>
@@ -73,16 +75,16 @@
                             <td class="text-end" @click.stop>
                                 <button
                                     type="button"
-                                    class="ld-action-link"
+                                    class="ld-action-link ld-action-link--neutral"
                                     x-show="row.nomor_transaksi"
                                     @click="openNota(row)"
                                     title="Lihat nota transaksi"
                                 >Nota</button>
-                                <button type="button" class="ld-action-link" x-show="!row.dihapus_pada" @click="openEdit(row)">Ubah</button>
+                                <button type="button" class="ld-action-link ld-action-link--primary" x-show="!row.dihapus_pada" @click="openEdit(row)">Ubah</button>
                                 <button type="button" class="ld-action-link ld-action-link--danger" x-show="!row.dihapus_pada" @click="confirmDelete(row)">Hapus</button>
                                 <button
                                     type="button"
-                                    class="ld-action-link"
+                                    class="ld-action-link ld-action-link--success"
                                     x-show="!row.dihapus_pada && (row.sisa_retur ?? row.jumlah) > 0"
                                     @click="openRetur(row)"
                                 >Retur</button>

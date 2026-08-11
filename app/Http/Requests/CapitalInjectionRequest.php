@@ -14,7 +14,7 @@ class CapitalInjectionRequest extends BaseFormRequest
     public function rules(): array
     {
         return [
-            'tanggal' => ['required', 'date', 'before_or_equal:'.AppTimezone::todayDateString()],
+            'tanggal' => ['required', 'date', 'after_or_equal:'.AppTimezone::TANGGAL_MULAI_USAHA, 'before_or_equal:'.AppTimezone::todayDateString()],
             'nominal' => ['required', 'numeric', 'min:0.01'],
             'keterangan' => ['nullable', 'string', 'max:255'],
         ];
@@ -24,6 +24,7 @@ class CapitalInjectionRequest extends BaseFormRequest
     {
         return [
             'tanggal.required' => 'Tanggal setoran wajib diisi.',
+            'tanggal.after_or_equal' => 'Tanggal setoran tidak boleh sebelum '.AppTimezone::TANGGAL_MULAI_USAHA.' (usaha mulai beroperasi 2018).',
             'tanggal.before_or_equal' => 'Tanggal setoran tidak boleh melebihi hari ini.',
             'nominal.required' => 'Nominal setoran wajib diisi.',
             'nominal.min' => 'Nominal setoran harus lebih dari 0.',

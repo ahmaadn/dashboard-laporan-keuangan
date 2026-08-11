@@ -25,25 +25,32 @@ class PeriodComparisonRequest extends BaseFormRequest
     {
         $today = AppTimezone::todayDateString();
         $presets = implode(',', self::PRESETS);
+        $minDate = AppTimezone::TANGGAL_MULAI_USAHA;
 
         return [
             'a' => ['required', 'string', 'in:'.$presets],
             'b' => ['required', 'string', 'in:'.$presets],
-            'a_start' => ['nullable', 'date', 'before_or_equal:'.$today],
-            'a_end' => ['nullable', 'date', 'before_or_equal:'.$today],
-            'b_start' => ['nullable', 'date', 'before_or_equal:'.$today],
-            'b_end' => ['nullable', 'date', 'before_or_equal:'.$today],
+            'a_start' => ['nullable', 'date', 'after_or_equal:'.$minDate, 'before_or_equal:'.$today],
+            'a_end' => ['nullable', 'date', 'after_or_equal:'.$minDate, 'before_or_equal:'.$today],
+            'b_start' => ['nullable', 'date', 'after_or_equal:'.$minDate, 'before_or_equal:'.$today],
+            'b_end' => ['nullable', 'date', 'after_or_equal:'.$minDate, 'before_or_equal:'.$today],
         ];
     }
 
     public function messages(): array
     {
+        $minDate = AppTimezone::TANGGAL_MULAI_USAHA;
+
         return [
             'a.in' => 'Periode pembanding A tidak valid.',
             'b.in' => 'Periode pembanding B tidak valid.',
+            'a_start.after_or_equal' => 'Tanggal awal periode A tidak boleh sebelum '.$minDate.'.',
             'a_start.before_or_equal' => 'Tanggal awal periode A tidak boleh melebihi hari ini.',
+            'a_end.after_or_equal' => 'Tanggal akhir periode A tidak boleh sebelum '.$minDate.'.',
             'a_end.before_or_equal' => 'Tanggal akhir periode A tidak boleh melebihi hari ini.',
+            'b_start.after_or_equal' => 'Tanggal awal periode B tidak boleh sebelum '.$minDate.'.',
             'b_start.before_or_equal' => 'Tanggal awal periode B tidak boleh melebihi hari ini.',
+            'b_end.after_or_equal' => 'Tanggal akhir periode B tidak boleh sebelum '.$minDate.'.',
             'b_end.before_or_equal' => 'Tanggal akhir periode B tidak boleh melebihi hari ini.',
         ];
     }

@@ -11,6 +11,12 @@ use Carbon\CarbonInterface;
  */
 final class AppTimezone
 {
+    /**
+     * Tanggal awal operasional usaha. Tidak ada transaksi maupun periode
+     * laporan yang boleh mendahului tanggal ini.
+     */
+    public const TANGGAL_MULAI_USAHA = '2018-01-01';
+
     public static function name(): string
     {
         return (string) config('app.display_timezone', 'Asia/Jakarta');

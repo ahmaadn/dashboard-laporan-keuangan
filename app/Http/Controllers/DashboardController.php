@@ -36,6 +36,7 @@ class DashboardController extends Controller
             'pengguna' => UserResource::collection($pengguna)->resolve(),
             'currentUser' => $request->user() ? UserResource::make($request->user())->resolve() : null,
             'tanggalHariIni' => AppTimezone::todayDateString(),
+            'tanggalMulaiUsaha' => AppTimezone::TANGGAL_MULAI_USAHA,
             'maxRentangHari' => PeriodResolver::MAX_RANGE_DAYS,
         ]);
     }

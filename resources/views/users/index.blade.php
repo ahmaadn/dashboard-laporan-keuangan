@@ -12,7 +12,7 @@
 
         <x-page-header eyebrow="Administrasi" title="Data Pengguna">
             <x-slot:actions>
-                <x-button variant="brand" icon="plus" @click="openAdd()">Tambah Pengguna</x-button>
+                <x-button variant="success" icon="plus" @click="openAdd()">Tambah Pengguna</x-button>
             </x-slot:actions>
         </x-page-header>
 
@@ -63,7 +63,7 @@
                                         x-cloak>Nonaktif</span>
                                 </td>
                                 <td class="text-end">
-                                    <button type="button" class="ld-action-link" x-show="!row.dihapus_pada"
+                                    <button type="button" class="ld-action-link ld-action-link--primary" x-show="!row.dihapus_pada"
                                         @click="openEdit(row)">Ubah</button>
                                     <button type="button" class="ld-action-link ld-action-link--danger"
                                         x-show="!row.dihapus_pada" @click="confirmDelete(row)">Hapus</button>
