@@ -419,7 +419,7 @@
             </div>
             <p class="ld-caption mb-0">
                 Kas masuk: <span class="tnum" x-text="fmt(summary.arusKasMasuk ?? 0)"></span>
-                (penjualan + modal <span class="tnum" x-text="fmt(summary.modalTotal ?? 0)"></span>).
+                (penjualan + modal masuk <span class="tnum" x-text="fmt(summary.modalMasuk ?? 0)"></span>).
                 Kas keluar: <span class="tnum" x-text="fmt(summary.arusKasKeluar ?? 0)"></span>.
             </p>
         </div>
@@ -434,12 +434,16 @@
             </div>
             <div class="d-flex justify-content-between">
                 <span class="ld-body-sm">+ Modal / Setoran Pemilik</span>
-                <span class="tnum fw-medium" x-text="fmt(summary.modalTotal ?? 0)"></span>
+                <span class="tnum fw-medium" x-text="fmt(summary.modalMasuk ?? 0)"></span>
             </div>
             <hr class="my-1">
             <div class="d-flex justify-content-between fw-medium">
                 <span>= Total Kas Masuk</span>
                 <span class="tnum" x-text="fmt(summary.arusKasMasuk ?? 0)"></span>
+            </div>
+            <div class="d-flex justify-content-between text-danger">
+                <span class="ld-body-sm">− Hutang / Piutang Pemilik</span>
+                <span class="tnum fw-medium" x-text="'− ' + fmt(summary.hutangPiutang ?? 0)"></span>
             </div>
             <div class="d-flex justify-content-between text-danger">
                 <span class="ld-body-sm">− Retur (uang dikembalikan ke pelanggan)</span>

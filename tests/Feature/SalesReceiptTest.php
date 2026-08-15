@@ -4,6 +4,7 @@ use App\Models\Income;
 use App\Models\Product;
 use App\Models\SalesReturn;
 use App\Models\User;
+use App\Services\SalesReceiptService;
 
 describe('sales receipt', function () {
     it('returns the receipt grouped by nomor transaksi', function () {
@@ -40,6 +41,7 @@ describe('sales receipt', function () {
         expect($response->json('nota.subtotal'))->toBe(390000);
         expect($response->json('nota.total'))->toBe(390000);
         expect($response->json('nota.kasir'))->toBe('Dimas');
+        expect($response->json('nota.usaha.logo'))->toContain('logo-t.png');
     });
 
     it('subtracts returns from the receipt total', function () {
@@ -99,6 +101,10 @@ describe('sales receipt', function () {
             'harga_satuan' => 75000,
             'total' => 75000,
         ]);
+
+        $html = view('income.nota', ['nota' => app(SalesReceiptService::class)->byNomorTransaksi($nomor)])->render();
+
+        expect($html)->toContain('@page { size: 88mm auto;')->toContain('nota__logo');
 
         $response = $this->actingAs($pegawai)->get("/income/nota/{$nomor}/pdf");
 

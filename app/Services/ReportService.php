@@ -31,9 +31,9 @@ use Carbon\CarbonInterface;
  * - pembelianBahanBaku   = SUM(expenses) WHERE category.is_bahan_baku = true
  * - pengeluaranKas       = pembelianBahanBaku + biayaOperasional
  * - modalTotal           = SUM(capital_injections.nominal)      [pembiayaan, bukan pendapatan]
- * - arusKasMasuk         = penjualan + modalTotal
+ * - arusKasMasuk         = penjualan + SUM(modal positif)
  * - returKeluar          = returTotal                             [uang dikembalikan ke pelanggan]
- * - arusKasKeluar        = pengeluaranKas + returKeluar
+ * - arusKasKeluar        = pengeluaranKas + returKeluar + ABS(SUM(modal negatif))
  * - arusKasBersih        = arusKasMasuk - arusKasKeluar
  *
  * {@see self::cashJournal()} memecah arusKasBersih menjadi jurnal per transaksi
@@ -204,7 +204,7 @@ final class ReportService
             'cashJournal' => $this->cashJournal($startStr, $endStr),
             'hasData' => $metrics['penjualan'] > 0 || $metrics['pengeluaranKas'] > 0
                 || abs($metrics['hppPenyesuaianTotal']) > 0 || $metrics['returTotal'] > 0
-                || $metrics['modalTotal'] > 0,
+                || abs($metrics['modalTotal']) > 0,
             // Backward-compatible alias untuk UI/export lama.
             'totalIncome' => $metrics['pendapatanBersih'],
             'totalExpense' => $metrics['pengeluaranKas'],
@@ -228,6 +228,8 @@ final class ReportService
      *   pengeluaranKas: float,
      *   labaBersih: float,
      *   modalTotal: float,
+     *   modalMasuk: float,
+     *   hutangPiutang: float,
      *   returKeluar: float,
      *   arusKasMasuk: float,
      *   arusKasKeluar: float,
@@ -281,9 +283,15 @@ final class ReportService
         $labaBersih = $labaKotor - $biayaOperasional;
 
         $modalTotal = (float) CapitalInjection::whereBetween('tanggal', [$startSql, $endSql])->sum('nominal');
-        $arusKasMasuk = $penjualan + $modalTotal;
+        $modalMasuk = (float) CapitalInjection::whereBetween('tanggal', [$startSql, $endSql])
+            ->where('nominal', '>', 0)
+            ->sum('nominal');
+        $modalKeluar = abs((float) CapitalInjection::whereBetween('tanggal', [$startSql, $endSql])
+            ->where('nominal', '<', 0)
+            ->sum('nominal'));
+        $arusKasMasuk = $penjualan + $modalMasuk;
         $returKeluar = $returTotal;
-        $arusKasKeluar = $pengeluaranKas + $returKeluar;
+        $arusKasKeluar = $pengeluaranKas + $returKeluar + $modalKeluar;
         $arusKasBersih = $arusKasMasuk - $arusKasKeluar;
 
         return [
@@ -301,6 +309,8 @@ final class ReportService
             'pengeluaranKas' => $pengeluaranKas,
             'labaBersih' => $labaBersih,
             'modalTotal' => $modalTotal,
+            'modalMasuk' => $modalMasuk,
+            'hutangPiutang' => $modalKeluar,
             'returKeluar' => $returKeluar,
             'arusKasMasuk' => $arusKasMasuk,
             'arusKasKeluar' => $arusKasKeluar,
@@ -310,8 +320,8 @@ final class ReportService
 
     /**
      * Jurnal arus kas: seluruh mutasi kas pada periode, terurut tanggal, dengan
-     * saldo berjalan. Baris jurnal mengikuti definisi arus kas di kelas ini —
-     * kas masuk = penjualan + modal; kas keluar = pengeluaran + retur.
+     * saldo berjalan. Nominal modal positif dicatat sebagai kas masuk; nominal
+     * negatif dicatat sebagai hutang/piutang dan kas keluar.
      *
      * Saldo awal dihitung kumulatif sebelum tanggal mulai, sehingga saldo akhir
      * jurnal sama dengan saldo kas kumulatif pada akhir periode.
@@ -353,14 +363,17 @@ final class ReportService
             ->orderBy('tanggal')
             ->orderBy('id')
             ->get() as $row) {
+            $nominal = (int) $row->nominal;
+            $isMasuk = $nominal > 0;
+
             $entries[] = [
                 'tanggal' => $row->tanggal?->format('Y-m-d'),
-                'jenis' => 'masuk',
-                'sumber' => 'modal',
-                'kategori' => 'Modal / Setoran Pemilik',
-                'keterangan' => $row->keterangan ?: 'Setoran modal',
-                'masuk' => (int) $row->nominal,
-                'keluar' => 0,
+                'jenis' => $isMasuk ? 'masuk' : 'keluar',
+                'sumber' => $isMasuk ? 'modal' : 'hutang_piutang',
+                'kategori' => $isMasuk ? 'Modal / Setoran Pemilik' : 'Hutang / Piutang',
+                'keterangan' => $row->keterangan ?: ($isMasuk ? 'Setoran modal' : 'Hutang/piutang pemilik'),
+                'masuk' => $isMasuk ? $nominal : 0,
+                'keluar' => $isMasuk ? 0 : abs($nominal),
             ];
         }
 

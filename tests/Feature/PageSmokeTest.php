@@ -44,15 +44,25 @@ it('renders buttons through the x-button component', function () {
         ->assertSee('btn-icon', false);
 });
 
-it('renders the logout button with the base btn class so the theme applies', function () {
+it('renders capital nominal keyboard sign control', function () {
+    $admin = User::factory()->admin()->create();
+
+    $this->actingAs($admin)
+        ->get('/capital')
+        ->assertOk()
+        ->assertSee('updateRupiahSign($event, form.nominal)', false);
+});
+
+it('renders profile before logout in the account dropdown', function () {
     $admin = User::factory()->admin()->create();
 
     $html = $this->actingAs($admin)->get('/expenses')->assertOk()->getContent();
 
-    // Varian LeatherDash hanya mendefinisikan variabel --bs-btn-*; tanpa kelas
-    // `btn` seluruh tema tidak diterapkan dan tombol tampil polos.
-    expect($html)->toMatch('/class="[^"]*\bbtn\b[^"]*\bld-logout-btn\b/');
-    expect($html)->not->toMatch('/class="btn-app-ghost btn-sm"/');
+    $profilePosition = strpos($html, '>Profil</span>');
+    $logoutPosition = strpos($html, '>Keluar</span>');
+
+    expect($html)->toContain('ld-account-dropdown')
+        ->and($profilePosition)->toBeLessThan($logoutPosition);
 });
 
 it('never renders a themed button variant without the base btn class', function (string $url) {

@@ -97,6 +97,7 @@ final class SalesReceiptService
             'total' => $subtotal - $totalRetur,
             'usaha' => [
                 'nama' => (string) config('app.name', 'BM Leather'),
+                'logo' => asset('logo-t.png'),
             ],
         ];
     }

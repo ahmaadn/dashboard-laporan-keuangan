@@ -7,6 +7,7 @@ use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\IncomeController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\Reports\ExportController;
 use App\Http\Controllers\SalesReceiptController;
@@ -29,6 +30,10 @@ Route::middleware('guest')->group(function () {
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout')->middleware('auth');
 
 Route::middleware('auth')->group(function () {
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::patch('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password.update');
+
     Route::get('/dashboard', [DashboardController::class, 'index'])->middleware('dashboard');
     Route::get('/api/dashboard', [DashboardController::class, 'data'])->middleware('dashboard');
     Route::get('/api/dashboard/compare', [DashboardController::class, 'compare'])->middleware('dashboard');

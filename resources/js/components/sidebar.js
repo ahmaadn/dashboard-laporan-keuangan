@@ -3,6 +3,7 @@ import { Offcanvas } from 'bootstrap';
 export default () => ({
     offcanvas: null,
     activeUrl: null,
+    accountMenuOpen: false,
 
     init() {
         this.activeUrl = window.location.pathname;
@@ -23,6 +24,14 @@ export default () => ({
 
     close() {
         this.offcanvas?.hide();
+    },
+
+    toggleAccountMenu() {
+        this.accountMenuOpen = !this.accountMenuOpen;
+    },
+
+    closeAccountMenu() {
+        this.accountMenuOpen = false;
     },
 
     isActive(url) {

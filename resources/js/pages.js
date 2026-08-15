@@ -11,7 +11,7 @@ function parseRupiahInput(value) {
     const digits = text.replace(/\D/g, '');
 
     if (!digits) {
-        return '';
+        return text === '-' ? '-' : '';
     }
 
     const amount = Number(digits);
@@ -20,6 +20,10 @@ function parseRupiahInput(value) {
 }
 
 function formatRupiahInput(value) {
+    if (String(value ?? '').trim() === '-') {
+        return '-';
+    }
+
     const amount = parseRupiahInput(value);
 
     if (amount === '') {
@@ -36,9 +40,37 @@ function updateRupiahInput(event) {
     return amount;
 }
 
+function updateRupiahSign(event, value) {
+    if (event.key !== '-' && event.key !== '+') {
+        return value;
+    }
+
+    event.preventDefault();
+    const amount = parseRupiahInput(value);
+
+    if (amount === '') {
+        const signedValue = event.key === '-' ? '-' : '';
+        event.target.value = signedValue;
+
+        return signedValue;
+    }
+
+    if (amount === '-') {
+        event.target.value = '';
+
+        return '';
+    }
+
+    const signedValue = event.key === '-' ? -amount : Math.abs(amount);
+    event.target.value = formatRupiahInput(signedValue);
+
+    return signedValue;
+}
+
 window.parseRupiahInput = parseRupiahInput;
 window.formatRupiahInput = formatRupiahInput;
 window.updateRupiahInput = updateRupiahInput;
+window.updateRupiahSign = updateRupiahSign;
 
 function nowStr() {
     const d = new Date();

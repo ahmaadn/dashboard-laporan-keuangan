@@ -42,8 +42,21 @@ class SalesReceiptController extends Controller
 
         $filename = Str::slug('nota-'.$receipt['nomor_transaksi']).'.pdf';
 
+        $receipt['usaha']['logo_data_uri'] = $this->logoDataUri();
+
         return Pdf::loadView('income.nota', ['nota' => $receipt])
-            ->setPaper('a5', 'portrait')
+            ->setPaper([0, 0, 249.4488, 500 + (count($receipt['items']) * 72)])
             ->download($filename);
+    }
+
+    private function logoDataUri(): ?string
+    {
+        $path = public_path('logo-t.png');
+
+        if (! is_file($path)) {
+            return null;
+        }
+
+        return 'data:image/png;base64,'.base64_encode((string) file_get_contents($path));
     }
 }

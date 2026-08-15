@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('title', 'Modal')
-@section('topbar-title', 'Modal / Setoran Pemilik')
+@section('topbar-title', 'Modal / Hutang Piutang')
 
 @push('scripts')
     @vite(['resources/js/pages.js'])
@@ -10,16 +10,15 @@
 @section('content')
     <div x-data="capital(@js($modal), @js($penggunaById), @js($currentUser))">
 
-        <x-page-header eyebrow="Pembiayaan" title="Modal / Setoran Pemilik">
+        <x-page-header eyebrow="Pembiayaan" title="Modal / Hutang Piutang">
             <x-slot:actions>
-                <x-button variant="success" icon="plus" @click="openAdd()">Catat Setoran</x-button>
+                <x-button variant="success" icon="plus" @click="openAdd()">Catat Modal</x-button>
             </x-slot:actions>
         </x-page-header>
 
         <div class="alert alert-info mb-4" role="status">
-            Setoran modal adalah suntikan dana pemilik — <strong>bukan</strong> pendapatan usaha dan tidak dihitung sebagai
-            penjualan atau Pendapatan Bersih.
-            Tercatat di Arus Kas Bersih (kas masuk) tetapi tidak mengubah Laba Kotor maupun Laba Bersih.
+            Nilai positif dicatat sebagai setoran modal dan kas masuk. Nilai negatif dicatat sebagai hutang/piutang dan kas keluar.
+            Keduanya bukan pendapatan usaha serta tidak mengubah Laba Kotor maupun Laba Bersih.
         </div>
 
         <x-app-card class="mb-4">
@@ -50,7 +49,8 @@
                                 <td x-text="pencatatNama(row.id_pengguna)"></td>
                                 <td>
                                     <span class="badge-soft-delete" x-show="row.dihapus_pada" x-cloak>Terhapus</span>
-                                    <span class="badge-success-soft" x-show="!row.dihapus_pada" x-cloak>Aktif</span>
+                                    <span class="badge-error-soft" x-show="!row.dihapus_pada && Number(row.nominal) < 0" x-cloak>Hutang/Piutang</span>
+                                    <span class="badge-success-soft" x-show="!row.dihapus_pada && Number(row.nominal) > 0" x-cloak>Modal</span>
                                 </td>
                                 <td class="text-end">
                                     <button type="button" class="ld-action-link ld-action-link--danger"
@@ -63,7 +63,7 @@
                 </table>
             </x-data-table>
             <template x-if="visibleRows.length === 0">
-                <x-empty-state icon="○" text="Belum ada catatan setoran modal." />
+                <x-empty-state icon="○" text="Belum ada catatan modal atau hutang/piutang." />
             </template>
         </x-app-card>
 
@@ -72,7 +72,7 @@
             @click.self="modalOpen = false" x-transition.opacity>
             <div class="ld-modal__dialog" x-transition>
                 <div class="ld-modal__header">
-                    <h5 class="ld-modal__title">Catat Setoran Modal</h5>
+                    <h5 class="ld-modal__title">Catat Modal / Hutang Piutang</h5>
                     <button type="button" class="btn-close" @click="modalOpen = false" aria-label="Tutup"></button>
                 </div>
                 <div class="ld-modal__body">
@@ -87,13 +87,15 @@
                             <label class="form-label">Nominal (Rp) <span class="req">*</span></label>
                             <input type="text" inputmode="numeric" class="form-control tnum"
                                 :class="errors.nominal ? 'ld-input-invalid' : ''" :value="formatRupiahInput(form.nominal)"
+                                @keydown="form.nominal = updateRupiahSign($event, form.nominal)"
                                 @input="form.nominal = updateRupiahInput($event)">
                             <div class="ld-field-error" x-show="errors.nominal" x-text="errors.nominal"></div>
+                            <p class="ld-caption mt-1 mb-0">Positif untuk modal; negatif untuk hutang/piutang. Nilai 0 tidak diperbolehkan.</p>
                         </div>
                         <div class="full">
                             <label class="form-label">Keterangan</label>
                             <textarea class="form-control" rows="2" x-model="form.keterangan"
-                                placeholder="mis. Setoran awal Mei 2026, Tambahan modal beli bahan"></textarea>
+                                placeholder="mis. Setoran modal, Pembayaran hutang, Piutang pemilik"></textarea>
                         </div>
                     </div>
                 </div>

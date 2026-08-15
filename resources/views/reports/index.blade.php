@@ -92,12 +92,16 @@
                 </div>
                 <div class="d-flex justify-content-between">
                     <span class="ld-body-sm">+ Modal / Setoran Pemilik</span>
-                    <span class="tnum fw-medium">@rupiah($report['modalTotal'])</span>
+                    <span class="tnum fw-medium">@rupiah($report['modalMasuk'])</span>
                 </div>
                 <hr class="my-1">
                 <div class="d-flex justify-content-between fw-medium">
                     <span>= Total Kas Masuk</span>
                     <span class="tnum">@rupiah($report['arusKasMasuk'])</span>
+                </div>
+                <div class="d-flex justify-content-between text-danger">
+                    <span class="ld-body-sm">− Hutang / Piutang Pemilik</span>
+                    <span class="tnum fw-medium">@rupiah($report['hutangPiutang'])</span>
                 </div>
                 <div class="d-flex justify-content-between text-danger">
                     <span class="ld-body-sm">− Retur (uang dikembalikan ke pelanggan)</span>
@@ -531,7 +535,9 @@
                             class="tnum text-muted">@rupiah($report['biayaOperasional'])</span></div>
                     <hr>
                     <div class="d-flex justify-content-between"><span>Modal / Setoran Pemilik (kas masuk)</span><span
-                            class="tnum">@rupiah($report['modalTotal'])</span></div>
+                            class="tnum">@rupiah($report['modalMasuk'])</span></div>
+                    <div class="d-flex justify-content-between text-danger"><span>Hutang / Piutang Pemilik (kas keluar)</span><span
+                            class="tnum">@rupiah($report['hutangPiutang'])</span></div>
                     <div class="d-flex justify-content-between"><span>Kas masuk total</span><span
                             class="tnum">@rupiah($report['arusKasMasuk'])</span></div>
                     <div class="d-flex justify-content-between fw-medium"><span>= Arus Kas Bersih <span
@@ -769,8 +775,8 @@
                     </table>
                 </x-data-table>
                 <p class="ld-caption mt-2 mb-0">
-                    Saldo berjalan dihitung dari saldo kumulatif sebelum periode. Kas masuk = penjualan + modal;
-                    kas keluar = pengeluaran + retur. Ini arus kas riil, bukan laba.
+                    Saldo berjalan dihitung dari saldo kumulatif sebelum periode. Kas masuk = penjualan + modal positif;
+                    kas keluar = pengeluaran + retur + hutang/piutang negatif. Ini arus kas riil, bukan laba.
                 </p>
             @endif
         </x-app-card>

@@ -30,7 +30,19 @@ describe('capital injection store', function () {
         expect(CapitalInjection::count())->toBe(0);
     });
 
-    it('validates nominal greater than zero', function () {
+    it('allows admin to record hutang piutang with a negative nominal', function () {
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)->postJson('/capital', [
+            'tanggal' => today()->toDateString(),
+            'nominal' => -750000,
+            'keterangan' => 'Piutang pemilik',
+        ])->assertCreated();
+
+        expect((float) CapitalInjection::first()->nominal)->toBe(-750000.0);
+    });
+
+    it('rejects a zero nominal', function () {
         $admin = User::factory()->admin()->create();
 
         $this->actingAs($admin)->postJson('/capital', [

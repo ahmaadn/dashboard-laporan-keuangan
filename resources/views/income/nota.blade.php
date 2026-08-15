@@ -5,8 +5,10 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <title>Nota {{ $nota['nomor_transaksi'] }} — {{ $nota['usaha']['nama'] }}</title>
     <style>
-        body { font-family: 'DejaVu Sans', sans-serif; color: #1f2937; font-size: 12px; margin: 28px; }
-        .nota__head { text-align: center; border-bottom: 2px solid #111827; padding-bottom: 10px; }
+        @page { size: 88mm auto; margin: 4mm; }
+        body { width: 80mm; font-family: 'DejaVu Sans', sans-serif; color: #1f2937; font-size: 10px; margin: 0 auto; }
+        .nota__logo { display: block; width: 18mm; height: 18mm; object-fit: contain; margin: 0 auto 3mm; }
+        .nota__head { text-align: center; border-bottom: 2px solid #111827; padding-bottom: 8px; }
         .nota__brand { font-size: 17px; font-weight: 700; color: #111827; letter-spacing: .5px; }
         .nota__subtitle { font-size: 11px; color: #6b7280; margin-top: 3px; }
         .nota__title { font-size: 13px; font-weight: 600; margin-top: 8px; text-transform: uppercase; letter-spacing: .08em; }
@@ -30,6 +32,7 @@
 </head>
 <body>
     <div class="nota__head">
+        <img class="nota__logo" src="{{ $nota['usaha']['logo_data_uri'] ?? public_path('logo-t.png') }}" alt="{{ $nota['usaha']['nama'] }}">
         <div class="nota__brand">{{ $nota['usaha']['nama'] }}</div>
         <div class="nota__subtitle">Kerajinan Kulit</div>
         <div class="nota__title">Nota Penjualan</div>

@@ -22,8 +22,8 @@
             <span class="ld-mono-caps" x-text="visibleRows.length + ' transaksi'"></span>
         </div>
 
-        <x-data-table>
-            <table class="ld-data-table ld-data-table--scroll-x">
+        <x-data-table :scroll="false">
+            <table class="ld-data-table ld-income-table">
                 <thead>
                     <tr>
                         <th style="width: 2rem"></th>
@@ -373,6 +373,7 @@
 
                 <div class="ld-nota" id="notaPrintArea" x-show="nota && !notaLoading" x-cloak>
                     <div class="ld-nota__head">
+                        <img class="ld-nota__logo" :src="nota?.usaha?.logo" :alt="nota?.usaha?.nama">
                         <div class="ld-nota__brand" x-text="nota?.usaha?.nama"></div>
                         <div class="ld-nota__subtitle">Kerajinan Kulit</div>
                         <div class="ld-nota__title">Nota Penjualan</div>

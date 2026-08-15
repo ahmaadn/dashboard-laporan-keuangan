@@ -62,6 +62,30 @@ describe('product store', function () {
         ])->assertStatus(422);
     });
 
+    it('validates product price relationships', function (array $prices) {
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)->postJson('/products', array_merge([
+            'nama' => 'Produk Harga Tidak Valid',
+            'harga' => 100000,
+        ], $prices))->assertUnprocessable()->assertJsonValidationErrors(array_keys($prices));
+    })->with([
+        'retail below cost' => [['harga_modal' => 100001]],
+        'wholesale is zero' => [['harga_grosir' => 0]],
+        'wholesale above retail' => [['harga_grosir' => 100001]],
+    ]);
+
+    it('allows valid retail, cost, and wholesale prices', function () {
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)->postJson('/products', [
+            'nama' => 'Produk Harga Valid',
+            'harga' => 100000,
+            'harga_modal' => 50000,
+            'harga_grosir' => 80000,
+        ])->assertCreated();
+    });
+
     it('validates unique product name including soft-deleted products', function () {
         $admin = User::factory()->admin()->create();
         $product = Product::factory()->create(['nama' => 'Tas Selempang Unik']);
