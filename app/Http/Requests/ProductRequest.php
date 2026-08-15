@@ -16,7 +16,7 @@ class ProductRequest extends BaseFormRequest
         $isCreate = $this->isMethod('POST');
 
         return [
-            'nama' => ['required', 'string', 'max:150'],
+            'nama' => ['required', 'string', 'max:150', Rule::unique('products', 'nama')->ignore($this->route('product'))],
             'id_kategori' => ['nullable', 'exists:product_categories,id'],
             'sku' => ['nullable', 'string', 'max:50', Rule::unique('products', 'sku')->ignore($this->route('product'))],
             'harga' => ['required', 'numeric', 'min:0'],
@@ -35,6 +35,7 @@ class ProductRequest extends BaseFormRequest
         return [
             'nama.required' => 'Nama produk wajib diisi.',
             'nama.max' => 'Nama produk maksimal 150 karakter.',
+            'nama.unique' => 'Nama produk sudah digunakan, gunakan nama lain.',
             'sku.unique' => 'SKU sudah digunakan, gunakan nilai lain.',
             'harga.required' => 'Harga wajib diisi.',
             'harga.min' => 'Harga tidak boleh negatif.',

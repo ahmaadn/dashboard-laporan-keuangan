@@ -5,6 +5,41 @@ function rupiah(n) {
     return 'Rp ' + Number(n || 0).toLocaleString('id-ID');
 }
 
+function parseRupiahInput(value) {
+    const text = String(value ?? '').trim();
+    const isNegative = text.startsWith('-');
+    const digits = text.replace(/\D/g, '');
+
+    if (!digits) {
+        return '';
+    }
+
+    const amount = Number(digits);
+
+    return isNegative ? -amount : amount;
+}
+
+function formatRupiahInput(value) {
+    const amount = parseRupiahInput(value);
+
+    if (amount === '') {
+        return '';
+    }
+
+    return `${amount < 0 ? '-' : ''}${Math.abs(amount).toLocaleString('id-ID')}`;
+}
+
+function updateRupiahInput(event) {
+    const amount = parseRupiahInput(event.target.value);
+    event.target.value = formatRupiahInput(amount);
+
+    return amount;
+}
+
+window.parseRupiahInput = parseRupiahInput;
+window.formatRupiahInput = formatRupiahInput;
+window.updateRupiahInput = updateRupiahInput;
+
 function nowStr() {
     const d = new Date();
 
@@ -117,9 +152,9 @@ const products = (rows, kategoriMap, isAdmin) => ({
             nama: this.form.nama,
             id_kategori: this.form.id_kategori || null,
             sku: this.form.sku || null,
-            harga: Number(this.form.harga),
-            harga_modal: Number(this.form.harga_modal || 0),
-            harga_grosir: this.form.harga_grosir === '' || this.form.harga_grosir == null ? null : Number(this.form.harga_grosir),
+            harga: parseRupiahInput(this.form.harga),
+            harga_modal: parseRupiahInput(this.form.harga_modal) || 0,
+            harga_grosir: this.form.harga_grosir === '' || this.form.harga_grosir == null ? null : parseRupiahInput(this.form.harga_grosir),
             min_qty_grosir: Number(this.form.min_qty_grosir || 3),
             stok_minimum: Number(this.form.stok_minimum || 5),
             deskripsi: this.form.deskripsi,
@@ -622,7 +657,7 @@ const income = (rows, produkAktif, produkById, penggunaById, currentUserId) => (
                 tanggal_transaksi: this.form.tanggal_transaksi,
                 jenis_transaksi: this.form.jenis_transaksi || 'offline',
                 jumlah: Number(this.form.jumlah),
-                harga_satuan: Number(this.form.harga_satuan),
+            harga_satuan: parseRupiahInput(this.form.harga_satuan),
                 harga_manual: !!this.form.harga_manual,
                 keterangan: this.form.keterangan,
             });
@@ -641,7 +676,7 @@ const income = (rows, produkAktif, produkById, penggunaById, currentUserId) => (
                 items: this.cart.map((line) => ({
                     id_produk: line.id_produk || null,
                     jumlah: Number(line.jumlah),
-                    harga_satuan: Number(line.harga_satuan),
+                    harga_satuan: parseRupiahInput(line.harga_satuan),
                     harga_manual: !!line.harga_manual,
                 })),
             });
@@ -823,7 +858,7 @@ const expenses = (rows, kategoriPengeluaran, penggunaById, currentUserId, saldoK
         const body = JSON.stringify({
             id_kategori: this.form.id_kategori,
             tanggal_transaksi: this.form.tanggal_transaksi,
-            nominal: Number(this.form.nominal),
+            nominal: parseRupiahInput(this.form.nominal),
             keterangan: this.form.keterangan,
         });
 
@@ -914,7 +949,7 @@ const users = (rows, currentUser) => ({
 
     openAdd() {
         this.editingId = null;
-        this.form = { nama: '', nama_pengguna: '', email: '', kata_sandi: '', peran: 'pegawai', dapat_melihat_dashboard: false, aktif: true };
+        this.form = { nama: '', nama_pengguna: '', email: '', kata_sandi: '', peran: 'pegawai', aktif: true };
         this.errors = {};
         this.modalOpen = true;
     },
@@ -924,12 +959,6 @@ const users = (rows, currentUser) => ({
         this.form = { ...row, kata_sandi: '' };
         this.errors = {};
         this.modalOpen = true;
-    },
-
-    onPeranChange() {
-        if (this.form.peran === 'admin') {
-            this.form.dapat_melihat_dashboard = true;
-        }
     },
 
     async save() {
@@ -1136,7 +1165,7 @@ const capital = (rows, penggunaById, currentUser) => ({
         this.saving = true;
         const body = JSON.stringify({
             tanggal: this.form.tanggal,
-            nominal: Number(this.form.nominal),
+            nominal: parseRupiahInput(this.form.nominal),
             keterangan: this.form.keterangan,
         });
         const res = await apiFetch('/capital', { method: 'POST', body });

@@ -58,7 +58,6 @@ class DatabaseSeeder extends Seeder
                 'email' => 'busari@leatherdash.id',
                 'password' => Hash::make('demo1234'),
                 'peran' => 'admin',
-                'dapat_melihat_dashboard' => true,
                 'is_active' => true,
             ],
         );
@@ -70,7 +69,6 @@ class DatabaseSeeder extends Seeder
                 'email' => 'dimas@leatherdash.id',
                 'password' => Hash::make('demo1234'),
                 'peran' => 'pegawai',
-                'dapat_melihat_dashboard' => true,
                 'is_active' => true,
             ],
         );
@@ -82,7 +80,6 @@ class DatabaseSeeder extends Seeder
                 'email' => 'rina@leatherdash.id',
                 'password' => Hash::make('demo1234'),
                 'peran' => 'pegawai',
-                'dapat_melihat_dashboard' => false,
                 'is_active' => true,
             ],
         );

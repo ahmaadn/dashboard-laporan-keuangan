@@ -16,16 +16,8 @@ describe('login', function () {
         assertAuthenticated();
     });
 
-    it('redirects to dashboard for pegawai with dashboard access', function () {
-        $pegawai = User::factory()->pegawai()->withDashboard()->create(['password' => 'password']);
-
-        $response = post('/login', ['login' => $pegawai->username, 'password' => 'password']);
-
-        $response->assertRedirect('/dashboard');
-    });
-
-    it('redirects to income for pegawai without dashboard access', function () {
-        $pegawai = User::factory()->pegawai()->withoutDashboard()->create(['password' => 'password']);
+    it('redirects pegawai to income', function () {
+        $pegawai = User::factory()->pegawai()->create(['password' => 'password']);
 
         $response = post('/login', ['login' => $pegawai->username, 'password' => 'password']);
 

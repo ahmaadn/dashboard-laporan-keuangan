@@ -2,6 +2,13 @@
 
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
+
+describe('user schema', function () {
+    it('does not contain the dashboard visibility column', function () {
+        expect(Schema::hasColumn('users', 'dapat_melihat_dashboard'))->toBeFalse();
+    });
+});
 
 describe('user store', function () {
     it('creates a user as admin', function () {
@@ -13,7 +20,6 @@ describe('user store', function () {
             'email' => 'baru@test.id',
             'kata_sandi' => 'password123',
             'peran' => 'pegawai',
-            'dapat_melihat_dashboard' => false,
             'aktif' => true,
         ]);
 
@@ -59,21 +65,6 @@ describe('user store', function () {
         ])->assertStatus(422);
     });
 
-    it('sets dapat_melihat_dashboard true for admin automatically', function () {
-        $admin = User::factory()->admin()->create();
-
-        $this->actingAs($admin)->postJson('/users', [
-            'nama' => 'Admin Baru',
-            'nama_pengguna' => 'adminbaru',
-            'email' => 'adminbaru@test.id',
-            'kata_sandi' => 'password123',
-            'peran' => 'admin',
-            'dapat_melihat_dashboard' => false,
-            'aktif' => true,
-        ])->assertCreated();
-
-        expect(User::where('username', 'adminbaru')->first()->dapat_melihat_dashboard)->toBeTrue();
-    });
 });
 
 describe('user update', function () {

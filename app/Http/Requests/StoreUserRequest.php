@@ -19,7 +19,6 @@ class StoreUserRequest extends BaseFormRequest
             'email' => ['required', 'email', 'max:100', Rule::unique('users', 'email')],
             'kata_sandi' => ['required', 'string', 'min:8'],
             'peran' => ['required', 'in:admin,pegawai'],
-            'dapat_melihat_dashboard' => ['boolean'],
             'aktif' => ['boolean'],
         ];
     }
@@ -42,15 +41,12 @@ class StoreUserRequest extends BaseFormRequest
     /** @return array<string, mixed> */
     public function mapped(): array
     {
-        $peran = $this->input('peran');
-
         return [
             'nama' => $this->string('nama')->trim(),
             'username' => $this->string('nama_pengguna')->trim(),
             'email' => $this->string('email')->trim(),
             'password' => $this->input('kata_sandi'),
-            'peran' => $peran,
-            'dapat_melihat_dashboard' => $peran === 'admin' ? true : (bool) $this->input('dapat_melihat_dashboard'),
+            'peran' => $this->input('peran'),
             'is_active' => (bool) $this->input('aktif', true),
         ];
     }

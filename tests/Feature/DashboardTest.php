@@ -104,8 +104,8 @@ describe('dashboard data endpoint', function () {
         expect($response->json('summary.income'))->toBe(100000);
     });
 
-    it('blocks pegawai without dashboard access', function () {
-        $pegawai = User::factory()->pegawai()->withoutDashboard()->create();
+    it('blocks pegawai', function () {
+        $pegawai = User::factory()->pegawai()->create();
 
         $this->actingAs($pegawai)->getJson('/api/dashboard')->assertForbidden();
     });

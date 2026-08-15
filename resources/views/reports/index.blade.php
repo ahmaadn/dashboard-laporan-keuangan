@@ -654,7 +654,8 @@
                     </div>
                     <div>
                         <label class="form-label">Nominal (+/-)</label>
-                        <input type="number" name="nominal" class="form-control form-control-sm" step="1000" required>
+                        <input type="text" inputmode="numeric" name="nominal" class="form-control form-control-sm tnum"
+                            oninput="this.value = window.formatRupiahInput(this.value)" required>
                     </div>
                     <div class="full">
                         <label class="form-label">Keterangan</label>
@@ -785,7 +786,7 @@
             const form = e.target;
             const fd = new FormData(form);
             const body = Object.fromEntries(fd.entries());
-            body.nominal = Number(body.nominal);
+            body.nominal = window.parseRupiahInput(body.nominal);
             const res = await fetch('/reports/hpp-adjustments', {
                 method: 'POST',
                 headers: {

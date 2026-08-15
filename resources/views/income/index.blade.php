@@ -179,7 +179,8 @@
                                         Harga Satuan <span class="req">*</span>
                                         <span class="badge-success-soft ms-1" x-show="hargaTipePreview === 'grosir'" x-cloak>Grosir</span>
                                     </label>
-                                    <input type="number" min="0" step="1000" class="form-control" :class="errors.harga_satuan ? 'ld-input-invalid' : ''" x-model="form.harga_satuan" :readonly="!form.harga_manual">
+                                    <input type="text" inputmode="numeric" class="form-control tnum" :class="errors.harga_satuan ? 'ld-input-invalid' : ''"
+                                        :value="formatRupiahInput(form.harga_satuan)" @input="form.harga_satuan = updateRupiahInput($event)" :readonly="!form.harga_manual">
                                     <div class="ld-field-error" x-show="errors.harga_satuan" x-text="errors.harga_satuan"></div>
                                     <div class="form-check form-switch mt-2">
                                         <input class="form-check-input" type="checkbox" id="hargaManualEdit" x-model="form.harga_manual" @change="onPricingInputsChange()">
@@ -218,7 +219,8 @@
                                                     <input type="number" min="1" step="1" class="form-control form-control-sm text-end" x-model="line.jumlah" @input="onCartLinePricingChange(idx)">
                                                 </td>
                                                 <td>
-                                                    <input type="number" min="0" step="1000" class="form-control form-control-sm text-end" x-model="line.harga_satuan" :readonly="!line.harga_manual">
+                                                    <input type="text" inputmode="numeric" class="form-control form-control-sm text-end tnum"
+                                                        :value="formatRupiahInput(line.harga_satuan)" @input="line.harga_satuan = updateRupiahInput($event)" :readonly="!line.harga_manual">
                                                     <div class="form-check form-switch mt-1">
                                                         <input class="form-check-input" type="checkbox" :id="'hm'+idx" x-model="line.harga_manual" @change="onCartLinePricingChange(idx)">
                                                         <label class="form-check-label ld-caption" :for="'hm'+idx">Manual</label>
@@ -257,7 +259,8 @@
                                             Harga
                                             <span class="badge-success-soft ms-1" x-show="draftHargaTipe === 'grosir'" x-cloak>Grosir</span>
                                         </label>
-                                        <input type="number" min="0" step="1000" class="form-control" x-model="cartDraft.harga_satuan" :readonly="!cartDraft.harga_manual">
+                                        <input type="text" inputmode="numeric" class="form-control tnum"
+                                            :value="formatRupiahInput(cartDraft.harga_satuan)" @input="cartDraft.harga_satuan = updateRupiahInput($event)" :readonly="!cartDraft.harga_manual">
                                         <div class="form-check form-switch mt-2">
                                             <input class="form-check-input" type="checkbox" id="hargaManualDraft" x-model="cartDraft.harga_manual" @change="onDraftPricingChange()">
                                             <label class="form-check-label" for="hargaManualDraft">Harga manual</label>

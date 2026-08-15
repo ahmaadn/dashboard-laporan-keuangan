@@ -33,7 +33,6 @@
                             <th>Nama Pengguna</th>
                             <th>Email</th>
                             <th>Peran</th>
-                            <th>Akses Dashboard</th>
                             <th>Status</th>
                             <th class="text-end">Aksi</th>
                         </tr>
@@ -47,13 +46,6 @@
                                 <td>
                                     <span class="badge-filled" x-show="row.peran === 'admin'">Admin</span>
                                     <span class="badge-neutral" x-show="row.peran !== 'admin'" x-cloak>Pegawai</span>
-                                </td>
-                                <td>
-                                    <span x-show="row.peran === 'pegawai' && row.dapat_melihat_dashboard"
-                                        class="badge-success-soft">Ya</span>
-                                    <span x-show="row.peran === 'pegawai' && !row.dapat_melihat_dashboard"
-                                        class="badge-neutral" x-cloak>Tidak</span>
-                                    <span x-show="row.peran === 'admin'" class="ld-mono-caps" x-cloak>Otomatis</span>
                                 </td>
                                 <td>
                                     <span class="badge-soft-delete" x-show="row.dihapus_pada" x-cloak>Terhapus</span>
@@ -116,19 +108,10 @@
                         </div>
                         <div>
                             <label class="form-label">Peran <span class="req">*</span></label>
-                            <select class="form-select" x-model="form.peran" @change="onPeranChange()">
+                            <select class="form-select" x-model="form.peran">
                                 <option value="admin">Admin</option>
                                 <option value="pegawai">Pegawai</option>
                             </select>
-                        </div>
-                        <div>
-                            <label class="form-label">Akses Dashboard</label>
-                            <div class="form-check form-switch pt-2" x-show="form.peran === 'pegawai'" x-cloak>
-                                <input class="form-check-input" type="checkbox" role="switch" id="usrDash"
-                                    x-model="form.dapat_melihat_dashboard">
-                                <label class="form-check-label" for="usrDash">Izinkan melihat dashboard</label>
-                            </div>
-                            <span x-show="form.peran === 'admin'" class="ld-mono-caps" x-cloak>Otomatis untuk Admin</span>
                         </div>
                         <div class="full">
                             <label class="form-label">Status Akun</label>

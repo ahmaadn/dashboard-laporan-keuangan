@@ -39,7 +39,7 @@ class AuthController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended($user->canSeeDashboard() ? '/dashboard' : '/income');
+        return redirect()->intended($user->isAdmin() ? '/dashboard' : '/income');
     }
 
     public function logout(Request $request)
@@ -67,7 +67,6 @@ class AuthController extends Controller
                 'nama' => $u->nama,
                 'nama_pengguna' => $u->username,
                 'peran' => $u->peran,
-                'dapat_melihat_dashboard' => $u->canSeeDashboard(),
             ])
             ->values()
             ->all();

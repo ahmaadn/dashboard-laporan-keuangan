@@ -1,13 +1,11 @@
 @php
     $namaParts = explode(' ', $currentUser['nama']);
     $initials = strtoupper(implode('', array_map(fn ($w) => mb_substr($w, 0, 1), array_slice($namaParts, 0, 2))));
-    $roleLabel = $currentUser['peran'] === 'admin' ? 'Admin' : 'Pegawai';
-    $dashNote = $currentUser['peran'] === 'pegawai'
-        ? ($currentUser['dapat_melihat_dashboard'] ? ' · akses dashboard' : ' · tanpa dashboard')
-        : '';
+    $isAdmin = $currentUser['peran'] === 'admin';
+    $roleLabel = $isAdmin ? 'Admin' : 'Pegawai';
 @endphp
 
-<a class="ld-sidebar__brand ld-brand-mark" href="{{ !empty($currentUser) && $currentUser['dapat_melihat_dashboard'] ? '/dashboard' : '/income' }}">
+<a class="ld-sidebar__brand ld-brand-mark" href="{{ $isAdmin ? '/dashboard' : '/income' }}">
     <img src="{{ asset('logo-t.png') }}" alt="{{ config('app.name', 'BM Leather') }}" class="ld-brand-logo" width="36" height="36">
     <span class="ld-brand-wordmark">{{ config('app.name', 'BM Leather') }}</span>
 </a>
@@ -27,7 +25,7 @@
         <span class="ld-avatar">{{ $initials }}</span>
         <div class="overflow-hidden">
             <div class="small fw-medium text-truncate">{{ $currentUser['nama'] }}</div>
-            <div class="ld-mono-micro">{{ $roleLabel }}{{ $dashNote }}</div>
+            <div class="ld-mono-micro">{{ $roleLabel }}</div>
         </div>
     </div>
 </div>

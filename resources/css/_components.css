@@ -1149,6 +1149,9 @@ a:focus-visible {
 .ld-auth-quickfill__nama { font-size: 0.9375rem; font-weight: 500; color: #fff; }
 .ld-auth-quickfill__peran { font-size: 0.6875rem; color: var(--ld-mute); font-family: var(--ld-font-mono); text-transform: uppercase; }
 .ld-auth-error { color: var(--ld-brand); font-size: 0.875rem; }
+.ld-auth-success { color: #7ad7a7; font-size: 0.875rem; }
+.ld-auth-link { color: var(--ld-link-soft); font-size: 0.8125rem; text-decoration: none; }
+.ld-auth-link:hover { color: #fff; text-decoration: underline; }
 .ld-auth-divider { height: 1px; background-color: var(--ld-hairline-soft); border: 0; margin: var(--ld-space-lg) 0; }
 .ld-auth-toggle {
     position: absolute;
@@ -1187,4 +1190,3 @@ a:focus-visible {
 .ld-sidebar-offcanvas { width: 264px; max-width: 90vw; }
 .ld-sidebar-offcanvas .offcanvas-body { padding: 0; }
 .ld-sidebar-inner { display: flex; flex-direction: column; min-height: 100%; }
-

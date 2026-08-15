@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['nama', 'username', 'email', 'password', 'peran', 'dapat_melihat_dashboard', 'is_active'])]
+#[Fillable(['nama', 'username', 'email', 'password', 'peran', 'is_active'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -23,7 +23,6 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
-            'dapat_melihat_dashboard' => 'boolean',
             'is_active' => 'boolean',
             'deleted_at' => 'datetime',
         ];
@@ -36,7 +35,7 @@ class User extends Authenticatable
 
     public function canSeeDashboard(): bool
     {
-        return $this->isAdmin() || $this->dapat_melihat_dashboard;
+        return $this->isAdmin();
     }
 
     /** @return HasMany<Income, $this> */

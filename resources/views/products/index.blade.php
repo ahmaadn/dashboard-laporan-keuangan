@@ -117,20 +117,23 @@
                         </div>
                         <div>
                             <label class="form-label">Harga Eceran <span class="req">*</span></label>
-                            <input type="number" min="0" step="1000" class="form-control"
-                                :class="errors.harga ? 'ld-input-invalid' : ''" x-model="form.harga">
+                            <input type="text" inputmode="numeric" class="form-control tnum"
+                                :class="errors.harga ? 'ld-input-invalid' : ''" :value="formatRupiahInput(form.harga)"
+                                @input="form.harga = updateRupiahInput($event)">
                             <div class="ld-field-error" x-show="errors.harga" x-text="errors.harga"></div>
                         </div>
                         <div>
                             <label class="form-label">Harga Modal (HPP)</label>
-                            <input type="number" min="0" step="1000" class="form-control"
-                                :class="errors.harga_modal ? 'ld-input-invalid' : ''" x-model="form.harga_modal">
+                            <input type="text" inputmode="numeric" class="form-control tnum"
+                                :class="errors.harga_modal ? 'ld-input-invalid' : ''" :value="formatRupiahInput(form.harga_modal)"
+                                @input="form.harga_modal = updateRupiahInput($event)">
                             <div class="ld-field-error" x-show="errors.harga_modal" x-text="errors.harga_modal"></div>
                         </div>
                         <div>
                             <label class="form-label">Harga Grosir</label>
-                            <input type="number" min="0" step="1000" class="form-control"
-                                :class="errors.harga_grosir ? 'ld-input-invalid' : ''" x-model="form.harga_grosir"
+                            <input type="text" inputmode="numeric" class="form-control tnum"
+                                :class="errors.harga_grosir ? 'ld-input-invalid' : ''" :value="formatRupiahInput(form.harga_grosir)"
+                                @input="form.harga_grosir = updateRupiahInput($event)"
                                 placeholder="Opsional">
                             <div class="ld-field-error" x-show="errors.harga_grosir" x-text="errors.harga_grosir"></div>
                         </div>

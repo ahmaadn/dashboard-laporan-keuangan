@@ -19,7 +19,7 @@ class ProductFactory extends Factory
 
         return [
             'category_id' => ProductCategory::factory(),
-            'nama' => fake()->words(2, true),
+            'nama' => fake()->unique()->words(2, true),
             'sku' => fake()->unique()->bothify('???-###'),
             'harga' => $harga,
             'harga_modal' => $modal,

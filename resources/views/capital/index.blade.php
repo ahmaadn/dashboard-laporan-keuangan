@@ -85,8 +85,9 @@
                         </div>
                         <div>
                             <label class="form-label">Nominal (Rp) <span class="req">*</span></label>
-                            <input type="number" min="1" step="1000" class="form-control"
-                                :class="errors.nominal ? 'ld-input-invalid' : ''" x-model="form.nominal">
+                            <input type="text" inputmode="numeric" class="form-control tnum"
+                                :class="errors.nominal ? 'ld-input-invalid' : ''" :value="formatRupiahInput(form.nominal)"
+                                @input="form.nominal = updateRupiahInput($event)">
                             <div class="ld-field-error" x-show="errors.nominal" x-text="errors.nominal"></div>
                         </div>
                         <div class="full">

@@ -17,7 +17,6 @@ class UserResource extends JsonResource
             'nama_pengguna' => $this->username,
             'email' => $this->email,
             'peran' => $this->peran,
-            'dapat_melihat_dashboard' => $this->canSeeDashboard(),
             'aktif' => $this->is_active,
             'dihapus_pada' => $this->when($this->trashed(), fn () => $this->deleted_at?->format('Y-m-d H:i:s')),
         ];

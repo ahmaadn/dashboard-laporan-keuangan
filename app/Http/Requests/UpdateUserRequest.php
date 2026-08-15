@@ -21,7 +21,6 @@ class UpdateUserRequest extends BaseFormRequest
             'email' => ['required', 'email', 'max:100', Rule::unique('users', 'email')->ignore($userId)],
             'kata_sandi' => ['nullable', 'string', 'min:8'],
             'peran' => ['required', 'in:admin,pegawai'],
-            'dapat_melihat_dashboard' => ['boolean'],
             'aktif' => ['boolean'],
         ];
     }
@@ -43,13 +42,11 @@ class UpdateUserRequest extends BaseFormRequest
     /** @return array<string, mixed> */
     public function mapped(): array
     {
-        $peran = $this->input('peran');
         $data = [
             'nama' => $this->string('nama')->trim(),
             'username' => $this->string('nama_pengguna')->trim(),
             'email' => $this->string('email')->trim(),
-            'peran' => $peran,
-            'dapat_melihat_dashboard' => $peran === 'admin' ? true : (bool) $this->input('dapat_melihat_dashboard'),
+            'peran' => $this->input('peran'),
             'is_active' => (bool) $this->input('aktif', true),
         ];
 

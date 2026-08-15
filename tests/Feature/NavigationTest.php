@@ -34,9 +34,9 @@ describe('sidebar menu and route access', function () {
     });
 
     it('pegawai does NOT see admin-only menus', function () {
-        $pegawai = User::factory()->pegawai()->withDashboard()->create();
+        $pegawai = User::factory()->pegawai()->create();
 
-        $response = $this->actingAs($pegawai)->get('/dashboard');
+        $response = $this->actingAs($pegawai)->get('/products');
         $response->assertOk();
         $html = $response->getContent();
 
@@ -45,14 +45,14 @@ describe('sidebar menu and route access', function () {
         expect(str_contains($html, 'href="/capital"'))->toBeFalse();
     });
 
-    it('pegawai sees Dashboard, Data Produk, Kelola Stok, Pemasukan, Retur, Pengeluaran', function () {
-        $pegawai = User::factory()->pegawai()->withDashboard()->create();
+    it('pegawai sees operational menus without Dashboard', function () {
+        $pegawai = User::factory()->pegawai()->create();
 
-        $response = $this->actingAs($pegawai)->get('/dashboard');
+        $response = $this->actingAs($pegawai)->get('/products');
         $response->assertOk();
         $html = $response->getContent();
 
-        expect(str_contains($html, 'href="/dashboard"'))->toBeTrue();
+        expect(str_contains($html, 'href="/dashboard"'))->toBeFalse();
         expect(str_contains($html, 'href="/products"'))->toBeTrue();
         expect(str_contains($html, 'href="/stocks"'))->toBeTrue();
         expect(str_contains($html, 'href="/income"'))->toBeTrue();
@@ -68,13 +68,13 @@ describe('sidebar menu and route access', function () {
         }
     });
 
-    it('pegawai without dashboard access is blocked from dashboard', function () {
-        $pegawai = User::factory()->pegawai()->withoutDashboard()->create();
+    it('pegawai is blocked from dashboard', function () {
+        $pegawai = User::factory()->pegawai()->create();
         $this->actingAs($pegawai)->get('/dashboard')->assertForbidden();
     });
 
     it('pegawai cannot access admin-only pages', function () {
-        $pegawai = User::factory()->pegawai()->withDashboard()->create();
+        $pegawai = User::factory()->pegawai()->create();
         $this->actingAs($pegawai)->get('/users')->assertForbidden();
         $this->actingAs($pegawai)->get('/reports')->assertForbidden();
         $this->actingAs($pegawai)->get('/capital')->assertForbidden();

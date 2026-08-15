@@ -32,6 +32,9 @@
                     @if ($errors->any())
                         <div class="ld-auth-error mb-3">{{ $errors->first() }}</div>
                     @endif
+                    @if (session('status'))
+                        <div class="ld-auth-success mb-3">{{ session('status') }}</div>
+                    @endif
 
                     <div class="mb-3">
                         <label class="ld-auth-label" for="namaPengguna">Nama Pengguna / Email</label>
@@ -39,7 +42,10 @@
                     </div>
 
                     <div class="mb-4">
-                        <label class="ld-auth-label" for="kataSandi">Kata Sandi</label>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <label class="ld-auth-label" for="kataSandi">Kata Sandi</label>
+                            <a href="{{ route('password.request') }}" class="ld-auth-link">Lupa kata sandi?</a>
+                        </div>
                         <div class="position-relative">
                             <input id="kataSandi" name="password" :type="showPassword ? 'text' : 'password'" class="ld-auth-input pe-5" x-model="kataSandi" placeholder="••••••••" autocomplete="current-password">
                             <button type="button" @click="showPassword = !showPassword" class="ld-auth-toggle" :aria-label="showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'">
@@ -61,7 +67,7 @@
                             <span class="d-flex flex-column">
                                 <span class="ld-auth-quickfill__nama">{{ $profile['nama'] }}</span>
                                 <span class="ld-auth-quickfill__peran">
-                                    {{ $profile['peran'] === 'admin' ? 'Admin' : 'Pegawai' }}{{ $profile['peran'] === 'pegawai' ? ($profile['dapat_melihat_dashboard'] ? ' · akses dashboard' : ' · tanpa dashboard') : '' }}
+                                    {{ $profile['peran'] === 'admin' ? 'Admin' : 'Pegawai' }}
                                 </span>
                             </span>
                         </button>

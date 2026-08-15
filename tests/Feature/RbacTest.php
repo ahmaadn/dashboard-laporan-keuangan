@@ -9,17 +9,11 @@ describe('role-based access', function () {
     it('allows admin to access dashboard', function () {
         $admin = User::factory()->admin()->create();
 
-        get('/dashboard')->assertRedirect('/login');
+        $this->actingAs($admin)->get('/dashboard')->assertOk();
     });
 
-    it('allows pegawai with dashboard access', function () {
-        $pegawai = User::factory()->pegawai()->withDashboard()->create();
-
-        $this->actingAs($pegawai)->get('/dashboard')->assertOk();
-    });
-
-    it('blocks pegawai without dashboard access from dashboard', function () {
-        $pegawai = User::factory()->pegawai()->withoutDashboard()->create();
+    it('blocks pegawai from dashboard', function () {
+        $pegawai = User::factory()->pegawai()->create();
 
         $this->actingAs($pegawai)->get('/dashboard')->assertForbidden();
     });

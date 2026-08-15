@@ -62,6 +62,17 @@ describe('product store', function () {
         ])->assertStatus(422);
     });
 
+    it('validates unique product name including soft-deleted products', function () {
+        $admin = User::factory()->admin()->create();
+        $product = Product::factory()->create(['nama' => 'Tas Selempang Unik']);
+        $product->delete();
+
+        $this->actingAs($admin)->postJson('/products', [
+            'nama' => 'Tas Selempang Unik',
+            'harga' => 100000,
+        ])->assertUnprocessable()->assertJsonValidationErrors(['nama']);
+    });
+
     it('allows null sku', function () {
         $admin = User::factory()->admin()->create();
 
@@ -91,6 +102,16 @@ describe('product update', function () {
         $this->actingAs($admin)->putJson("/products/{$product->id}", [
             'nama' => 'Updated',
             'sku' => 'SAME-001',
+            'harga' => 100000,
+        ])->assertOk();
+    });
+
+    it('ignores unique name for the same product on update', function () {
+        $admin = User::factory()->admin()->create();
+        $product = Product::factory()->create(['nama' => 'Dompet Kulit Klasik']);
+
+        $this->actingAs($admin)->putJson("/products/{$product->id}", [
+            'nama' => 'Dompet Kulit Klasik',
             'harga' => 100000,
         ])->assertOk();
     });

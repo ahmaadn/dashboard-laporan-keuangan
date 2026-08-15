@@ -21,7 +21,6 @@ class UserFactory extends Factory
             'email' => fake()->unique()->safeEmail(),
             'password' => static::$password ??= Hash::make('password'),
             'peran' => 'pegawai',
-            'dapat_melihat_dashboard' => false,
             'is_active' => true,
             'email_verified_at' => now(),
         ];
@@ -31,7 +30,6 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'peran' => 'admin',
-            'dapat_melihat_dashboard' => true,
         ]);
     }
 
@@ -39,20 +37,6 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'peran' => 'pegawai',
-        ]);
-    }
-
-    public function withDashboard(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'dapat_melihat_dashboard' => true,
-        ]);
-    }
-
-    public function withoutDashboard(): static
-    {
-        return $this->state(fn (array $attributes) => [
-            'dapat_melihat_dashboard' => false,
         ]);
     }
 
