@@ -56,7 +56,7 @@ final class ExportRenderer
         $cells[] = $this->row([]);
 
         $cells[] = $this->row(['Kanal Penjualan', '', '', '', '', '']);
-        $cells[] = $this->row(['Kanal', 'Transaksi', 'Unit', 'Bruto', 'Retur', 'Bersih']);
+        $cells[] = $this->row(['Kanal', 'Transaksi', 'Unit', 'Penjualan', 'Retur', 'Bersih']);
         foreach (['online' => 'Online', 'offline' => 'Offline'] as $channelKey => $channelLabel) {
             $channel = $report['incomeByChannel'][$channelKey] ?? null;
             if ($channel === null) {

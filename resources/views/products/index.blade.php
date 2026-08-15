@@ -149,7 +149,7 @@
                             <label class="form-label">Stok Minimum</label>
                             <input type="number" min="0" step="1" class="form-control" x-model="form.stok_minimum">
                         </div>
-                        <div>
+                        <div x-show="editingId" x-cloak>
                             <label class="form-label">Status</label>
                             <div class="form-check form-switch pt-2">
                                 <input class="form-check-input" type="checkbox" role="switch" id="prodAktif"
