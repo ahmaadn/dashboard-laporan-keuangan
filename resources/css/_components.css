@@ -833,9 +833,79 @@
     white-space: normal;
 }
 
+.ld-income-table__col-toggle { width: 2.5%; }
+.ld-income-table__col-transaction { width: 12.5%; }
+.ld-income-table__col-date { width: 8%; }
+.ld-income-table__col-channel { width: 7%; }
+.ld-income-table__col-product { width: 12%; }
+.ld-income-table__col-quantity { width: 5%; }
+.ld-income-table__col-unit-price { width: 9%; }
+.ld-income-table__col-total { width: 10%; }
+.ld-income-table__col-recorder { width: 8%; }
+.ld-income-table__col-status { width: 8%; }
+.ld-income-table__col-actions { width: 18%; }
+
+.ld-income-table .ld-income-table__transaction {
+    padding-right: 0.75rem;
+    white-space: nowrap;
+}
+
+.ld-income-table .ld-income-table__date {
+    padding-left: 0.75rem;
+    white-space: nowrap;
+}
+
+.ld-income-table .ld-income-table__status,
+.ld-income-table .ld-income-table__status > span {
+    white-space: nowrap;
+}
+
 .ld-income-table .ld-action-link {
     display: inline-block;
     margin-block: 0.125rem;
+}
+
+@media (max-width: 1199.98px) {
+    .ld-income-table__col-unit-price,
+    .ld-income-table__col-recorder,
+    .ld-income-table .ld-income-table__unit-price,
+    .ld-income-table .ld-income-table__recorder {
+        display: none;
+    }
+
+    .ld-income-table__col-product { width: 17%; }
+    .ld-income-table__col-total { width: 13%; }
+    .ld-income-table__col-actions { width: 22%; }
+}
+
+@media (max-width: 767.98px) {
+    .ld-income-table__col-channel,
+    .ld-income-table__col-quantity,
+    .ld-income-table .ld-income-table__col-channel,
+    .ld-income-table .ld-income-table__col-quantity,
+    .ld-income-table th:nth-child(4),
+    .ld-income-table td:nth-child(4),
+    .ld-income-table th:nth-child(6),
+    .ld-income-table td:nth-child(6) {
+        display: none;
+    }
+
+    .ld-income-table {
+        font-size: 0.75rem;
+    }
+
+    .ld-income-table__col-toggle { width: 5%; }
+    .ld-income-table__col-transaction { width: 22%; }
+    .ld-income-table__col-date { width: 15%; }
+    .ld-income-table__col-product { width: 18%; }
+    .ld-income-table__col-total { width: 15%; }
+    .ld-income-table__col-status { width: 12%; }
+    .ld-income-table__col-actions { width: 13%; }
+
+    .ld-income-table .ld-action-link {
+        display: block;
+        margin-left: auto;
+    }
 }
 
 /* --- Badges --- */

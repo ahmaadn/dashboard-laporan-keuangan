@@ -24,18 +24,31 @@
 
         <x-data-table :scroll="false">
             <table class="ld-data-table ld-income-table">
+                <colgroup>
+                    <col class="ld-income-table__col-toggle">
+                    <col class="ld-income-table__col-transaction">
+                    <col class="ld-income-table__col-date">
+                    <col class="ld-income-table__col-channel">
+                    <col class="ld-income-table__col-product">
+                    <col class="ld-income-table__col-quantity">
+                    <col class="ld-income-table__col-unit-price">
+                    <col class="ld-income-table__col-total">
+                    <col class="ld-income-table__col-recorder">
+                    <col class="ld-income-table__col-status">
+                    <col class="ld-income-table__col-actions">
+                </colgroup>
                 <thead>
                     <tr>
                         <th style="width: 2rem"></th>
-                        <th>No. Transaksi</th>
-                        <th>Tanggal</th>
+                        <th class="ld-income-table__transaction">No. Transaksi</th>
+                        <th class="ld-income-table__date">Tanggal</th>
                         <th>Jenis</th>
                         <th>Produk</th>
                         <th class="text-end">Jumlah</th>
-                        <th class="text-end">Harga Satuan</th>
+                        <th class="text-end ld-income-table__unit-price">Harga Satuan</th>
                         <th class="text-end">Total</th>
-                        <th>Pencatat</th>
-                        <th>Status</th>
+                        <th class="ld-income-table__recorder">Pencatat</th>
+                        <th class="ld-income-table__status">Status</th>
                         <th class="text-end">Aksi</th>
                     </tr>
                 </thead>
@@ -57,8 +70,8 @@
                                     x-cloak
                                 ></span>
                             </td>
-                            <td class="tnum ld-mono-caps" x-text="row.nomor_transaksi || '—'"></td>
-                            <td class="tnum" x-text="row.tanggal_transaksi.split('-').reverse().join('/')"></td>
+                            <td class="tnum ld-mono-caps ld-income-table__transaction" x-text="row.nomor_transaksi || '—'"></td>
+                            <td class="tnum ld-income-table__date" x-text="row.tanggal_transaksi.split('-').reverse().join('/')"></td>
                             <td>
                                 <span
                                     :class="'ld-badge-channel ld-badge-channel--' + (row.jenis_transaksi === 'online' ? 'online' : 'offline')"
@@ -66,10 +79,10 @@
                             </td>
                             <td x-text="produkNama(row.id_produk)"></td>
                             <td class="text-end tnum" x-text="row.jumlah"></td>
-                            <td class="text-end tnum" x-text="rupiah(row.harga_satuan)"></td>
+                            <td class="text-end tnum ld-income-table__unit-price" x-text="rupiah(row.harga_satuan)"></td>
                             <td class="text-end tnum fw-medium" x-text="rupiah(row.total)"></td>
-                            <td x-text="pencatatNama(row.id_pengguna)"></td>
-                            <td>
+                            <td class="ld-income-table__recorder" x-text="pencatatNama(row.id_pengguna)"></td>
+                            <td class="ld-income-table__status">
                                 <span :class="statusBadgeClass(row)" x-text="statusLabel(row)" x-cloak></span>
                             </td>
                             <td class="text-end" @click.stop>

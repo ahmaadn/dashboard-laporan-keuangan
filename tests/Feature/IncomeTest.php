@@ -393,3 +393,17 @@ describe('nomor_transaksi field', function () {
         expect($payload['nomor_transaksi'])->toBe('TRX-TEST-0001');
     });
 });
+
+describe('income table', function () {
+    it('renders dedicated responsive columns for transaction, date, and status', function () {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->get('/income')
+            ->assertSuccessful()
+            ->assertSee('ld-income-table__col-transaction', false)
+            ->assertSee('ld-income-table__transaction', false)
+            ->assertSee('ld-income-table__date', false)
+            ->assertSee('ld-income-table__status', false);
+    });
+});
