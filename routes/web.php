@@ -39,7 +39,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/dashboard/compare', [DashboardController::class, 'compare'])->middleware('dashboard');
 
     Route::get('/products', [ProductController::class, 'index']);
-    Route::post('/products', [ProductController::class, 'store'])->middleware('role:admin');
+    Route::post('/products', [ProductController::class, 'store'])->middleware('role:admin,pegawai');
     Route::match(['put', 'patch'], '/products/{product}', [ProductController::class, 'update'])->middleware('role:admin');
     Route::delete('/products/{product}', [ProductController::class, 'destroy'])->middleware('role:admin');
     Route::post('/products/{product}/stock', [ProductController::class, 'adjustStock'])->middleware('role:admin');

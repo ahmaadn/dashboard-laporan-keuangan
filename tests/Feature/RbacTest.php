@@ -30,13 +30,13 @@ describe('role-based access', function () {
         $this->actingAs($pegawai)->get('/reports')->assertForbidden();
     });
 
-    it('blocks pegawai from product mutation routes', function () {
+    it('blocks pegawai from admin-only product mutation routes', function () {
         $pegawai = User::factory()->pegawai()->create();
         $product = Product::factory()->create();
 
-        $this->actingAs($pegawai)->post('/products', [])->assertForbidden();
         $this->actingAs($pegawai)->putJson("/products/{$product->id}", [])->assertForbidden();
         $this->actingAs($pegawai)->deleteJson("/products/{$product->id}")->assertForbidden();
+        $this->actingAs($pegawai)->postJson("/products/{$product->id}/stock", [])->assertForbidden();
     });
 
     it('allows pegawai to view products', function () {

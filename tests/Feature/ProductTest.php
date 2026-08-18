@@ -14,7 +14,10 @@ describe('product index', function () {
 
         $response = $this->actingAs($pegawai)->get('/products');
 
-        $response->assertOk()->assertSee('Dompet Aktif')->assertDontSee('Dompet Dihapus');
+        $response->assertOk()
+            ->assertSee('Dompet Aktif')
+            ->assertDontSee('Dompet Dihapus')
+            ->assertSee('Tambah Produk');
     });
 
     it('shows trashed products for admin', function () {
@@ -43,6 +46,23 @@ describe('product store', function () {
         $response->assertCreated()->assertJsonPath('success', true);
         expect(Product::where('nama', 'Tas Baru')->exists())->toBeTrue();
         expect(Product::where('nama', 'Tas Baru')->first()->created_by)->toBe($admin->id);
+    });
+
+    it('creates a product as pegawai', function () {
+        $pegawai = User::factory()->pegawai()->create();
+
+        $this->actingAs($pegawai)->postJson('/products', [
+            'nama' => 'Dompet Pegawai',
+            'sku' => 'DMP-001',
+            'harga' => 150000,
+            'stok' => 5,
+        ])->assertCreated()->assertJsonPath('success', true);
+
+        $product = Product::where('nama', 'Dompet Pegawai')->firstOrFail();
+
+        expect($product->created_by)->toBe($pegawai->id)
+            ->and($product->stok)->toBe(5)
+            ->and(StockMovement::where('product_id', $product->id)->sum('jumlah'))->toBe(5);
     });
 
     it('validates required fields', function () {

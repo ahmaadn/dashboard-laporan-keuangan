@@ -19,7 +19,7 @@ class ProductPolicy
 
     public function create(User $user): bool
     {
-        return $user->isAdmin();
+        return in_array($user->peran, ['admin', 'pegawai'], true);
     }
 
     public function update(User $user, Product $product): bool

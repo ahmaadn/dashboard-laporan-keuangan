@@ -42,6 +42,8 @@ class ProductController extends Controller
 
     public function store(ProductRequest $request): JsonResponse
     {
+        $this->authorize('create', Product::class);
+
         $data = $request->mapped();
         $data['created_by'] = $request->user()->id;
         $stokAwal = (int) ($data['stok'] ?? 0);

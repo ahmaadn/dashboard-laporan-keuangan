@@ -12,7 +12,9 @@
 
         <x-page-header eyebrow="Master Data" title="Data Produk">
             <x-slot:actions>
-                <x-button variant="success" icon="plus" x-show="isAdmin" @click="openAdd()">Tambah Produk</x-button>
+                @can('create', App\Models\Product::class)
+                    <x-button variant="success" icon="plus" @click="openAdd()">Tambah Produk</x-button>
+                @endcan
             </x-slot:actions>
         </x-page-header>
 
