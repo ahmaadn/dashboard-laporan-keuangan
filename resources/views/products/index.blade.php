@@ -59,11 +59,14 @@
                                         x-cloak>Nonaktif</span>
                                 </td>
                                 <td class="text-end" x-cloak>
-                                    <button type="button" class="ld-action-link ld-action-link--neutral" x-show="!row.dihapus_pada"
-                                        @click="openMovements(row)">Riwayat</button>
+                                    {{-- TIdak Aktikan dulu fitur riwayat
+                                    <!-- <button type="button" class="ld-action-link ld-action-link--neutral" x-show="!row.dihapus_pada"
+                                            @click="openMovements(row)">Riwayat</button> -->
+                                    --}}
                                     <template x-if="isAdmin && !row.dihapus_pada">
                                         <span>
-                                            <button type="button" class="ld-action-link ld-action-link--success" @click="openStock(row, 'restok')">+
+                                            <button type="button" class="ld-action-link ld-action-link--success"
+                                                @click="openStock(row, 'restok')">+
                                                 Stok</button>
                                             <button type="button" class="ld-action-link ld-action-link--neutral"
                                                 @click="openStock(row, 'koreksi')">Sesuaikan</button>
@@ -127,16 +130,17 @@
                         <div>
                             <label class="form-label">Harga Modal (HPP)</label>
                             <input type="text" inputmode="numeric" class="form-control tnum"
-                                :class="errors.harga_modal ? 'ld-input-invalid' : ''" :value="formatRupiahInput(form.harga_modal)"
+                                :class="errors.harga_modal ? 'ld-input-invalid' : ''"
+                                :value="formatRupiahInput(form.harga_modal)"
                                 @input="form.harga_modal = updateRupiahInput($event)">
                             <div class="ld-field-error" x-show="errors.harga_modal" x-text="errors.harga_modal"></div>
                         </div>
                         <div>
                             <label class="form-label">Harga Grosir</label>
                             <input type="text" inputmode="numeric" class="form-control tnum"
-                                :class="errors.harga_grosir ? 'ld-input-invalid' : ''" :value="formatRupiahInput(form.harga_grosir)"
-                                @input="form.harga_grosir = updateRupiahInput($event)"
-                                placeholder="Opsional">
+                                :class="errors.harga_grosir ? 'ld-input-invalid' : ''"
+                                :value="formatRupiahInput(form.harga_grosir)"
+                                @input="form.harga_grosir = updateRupiahInput($event)" placeholder="Opsional">
                             <div class="ld-field-error" x-show="errors.harga_grosir" x-text="errors.harga_grosir"></div>
                         </div>
                         <div>
@@ -168,7 +172,8 @@
                 </div>
                 <div class="ld-modal__footer">
                     <x-button variant="secondary" icon="close" @click="modalOpen = false">Batal</x-button>
-                    <x-button variant="app" icon="check" ::disabled="saving" ::class="saving ? 'is-loading' : ''" @click="save()">Simpan</x-button>
+                    <x-button variant="app" icon="check" ::disabled="saving" ::class="saving ? 'is-loading' : ''"
+                        @click="save()">Simpan</x-button>
                 </div>
             </div>
         </div>
