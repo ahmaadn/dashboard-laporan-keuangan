@@ -8,7 +8,12 @@
 @endpush
 
 @section('content')
-    <div x-data="products(@js($produk), @js($kategoriProduk), @js($currentUser['peran'] === 'admin'))">
+    <div x-data="products(
+        @js($produk),
+        @js($kategoriProduk),
+        @js($currentUser['peran'] === 'admin'),
+        @js(auth()->user()->can('manage', App\Models\Product::class))
+    )">
 
         <x-page-header eyebrow="Master Data" title="Data Produk">
             <x-slot:actions>
@@ -63,7 +68,7 @@
                                     <!-- <button type="button" class="ld-action-link ld-action-link--neutral" x-show="!row.dihapus_pada"
                                             @click="openMovements(row)">Riwayat</button> -->
                                     --}}
-                                    <template x-if="isAdmin && !row.dihapus_pada">
+                                    <template x-if="canManageProducts && !row.dihapus_pada">
                                         <span>
                                             <button type="button" class="ld-action-link ld-action-link--success"
                                                 @click="openStock(row, 'restok')">+

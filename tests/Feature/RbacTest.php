@@ -30,13 +30,25 @@ describe('role-based access', function () {
         $this->actingAs($pegawai)->get('/reports')->assertForbidden();
     });
 
-    it('blocks pegawai from admin-only product mutation routes', function () {
+    it('allows pegawai to mutate products and stock', function () {
         $pegawai = User::factory()->pegawai()->create();
-        $product = Product::factory()->create();
+        $updatedProduct = Product::factory()->create();
+        $stockedProduct = Product::factory()->create(['stok' => 10]);
+        $deletedProduct = Product::factory()->create();
 
-        $this->actingAs($pegawai)->putJson("/products/{$product->id}", [])->assertForbidden();
-        $this->actingAs($pegawai)->deleteJson("/products/{$product->id}")->assertForbidden();
-        $this->actingAs($pegawai)->postJson("/products/{$product->id}/stock", [])->assertForbidden();
+        $this->actingAs($pegawai)->putJson("/products/{$updatedProduct->id}", [
+            'nama' => 'Produk Diperbarui Pegawai',
+            'harga' => $updatedProduct->harga,
+        ])->assertOk();
+        $this->actingAs($pegawai)->postJson("/products/{$stockedProduct->id}/stock", [
+            'aksi' => 'restok',
+            'jumlah' => 5,
+        ])->assertOk();
+        $this->actingAs($pegawai)->deleteJson("/products/{$deletedProduct->id}")->assertOk();
+
+        expect($updatedProduct->fresh()->nama)->toBe('Produk Diperbarui Pegawai')
+            ->and($stockedProduct->fresh()->stok)->toBe(15)
+            ->and($deletedProduct->fresh()->trashed())->toBeTrue();
     });
 
     it('allows pegawai to view products', function () {

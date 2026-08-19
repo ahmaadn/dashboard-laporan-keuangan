@@ -99,7 +99,7 @@ class ProductController extends Controller
 
     public function adjustStock(Request $request, Product $product): JsonResponse
     {
-        $this->authorize('update', $product);
+        $this->authorize('adjustStock', $product);
 
         if ($product->trashed()) {
             return response()->json(['success' => false, 'message' => 'Produk yang sudah dihapus tidak dapat diubah stoknya.'], 422);

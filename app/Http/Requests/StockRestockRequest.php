@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Product;
 use App\Support\AppTimezone;
 use Illuminate\Validation\Rule;
 
@@ -9,13 +10,13 @@ class StockRestockRequest extends BaseFormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        return $this->user()?->can('manage', Product::class) ?? false;
     }
 
     public function rules(): array
     {
         return [
-            'id_produk' => ['required', 'integer', Rule::exists('products', 'id')],
+            'id_produk' => ['required', 'integer', Rule::exists('products', 'id')->whereNull('deleted_at')],
             'tanggal' => ['required', 'date', 'after_or_equal:'.AppTimezone::TANGGAL_MULAI_USAHA, 'before_or_equal:'.AppTimezone::todayDateString()],
             'jumlah' => ['required', 'integer', 'min:1'],
             'keterangan' => ['nullable', 'string', 'max:255'],

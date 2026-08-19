@@ -19,16 +19,26 @@ class ProductPolicy
 
     public function create(User $user): bool
     {
-        return in_array($user->peran, ['admin', 'pegawai'], true);
+        return $this->manage($user);
     }
 
     public function update(User $user, Product $product): bool
     {
-        return $user->isAdmin();
+        return $this->manage($user);
     }
 
     public function delete(User $user, Product $product): bool
     {
-        return $user->isAdmin();
+        return $this->manage($user);
+    }
+
+    public function adjustStock(User $user, Product $product): bool
+    {
+        return $this->manage($user);
+    }
+
+    public function manage(User $user): bool
+    {
+        return in_array($user->peran, ['admin', 'pegawai'], true);
     }
 }

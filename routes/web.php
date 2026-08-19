@@ -40,15 +40,14 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/products', [ProductController::class, 'index']);
     Route::post('/products', [ProductController::class, 'store'])->middleware('role:admin,pegawai');
-    Route::match(['put', 'patch'], '/products/{product}', [ProductController::class, 'update'])->middleware('role:admin');
-    Route::delete('/products/{product}', [ProductController::class, 'destroy'])->middleware('role:admin');
-    Route::post('/products/{product}/stock', [ProductController::class, 'adjustStock'])->middleware('role:admin');
+    Route::match(['put', 'patch'], '/products/{product}', [ProductController::class, 'update'])->middleware('role:admin,pegawai');
+    Route::delete('/products/{product}', [ProductController::class, 'destroy'])->middleware('role:admin,pegawai');
+    Route::post('/products/{product}/stock', [ProductController::class, 'adjustStock'])->middleware('role:admin,pegawai');
     Route::get('/products/{product}/movements', [ProductController::class, 'movements']);
 
-    // Kelola Stok — semua peran dapat melihat & mencatat retur/produksi;
-    // mutasi stok masuk (restok) butuh Admin.
+    // Kelola Stok — Admin dan Pegawai dapat melihat serta mencatat produksi/restok.
     Route::get('/stocks', [StockController::class, 'index']);
-    Route::post('/stocks', [StockController::class, 'store'])->middleware('role:admin');
+    Route::post('/stocks', [StockController::class, 'store'])->middleware('role:admin,pegawai');
     Route::get('/stocks/movements', [StockController::class, 'movements']);
 
     Route::get('/income', [IncomeController::class, 'index']);

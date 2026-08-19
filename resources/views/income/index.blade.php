@@ -22,7 +22,7 @@
             <span class="ld-mono-caps" x-text="visibleRows.length + ' transaksi'"></span>
         </div>
 
-        <x-data-table :scroll="false">
+        <x-data-table>
             <table class="ld-data-table ld-income-table">
                 <colgroup>
                     <col class="ld-income-table__col-toggle">

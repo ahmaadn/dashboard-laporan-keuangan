@@ -159,6 +159,18 @@ describe('product update', function () {
             'harga' => 100000,
         ])->assertOk();
     });
+
+    it('allows pegawai to update a product', function () {
+        $pegawai = User::factory()->pegawai()->create();
+        $product = Product::factory()->create(['nama' => 'Nama Lama']);
+
+        $this->actingAs($pegawai)->putJson("/products/{$product->id}", [
+            'nama' => 'Nama Baru Pegawai',
+            'harga' => $product->harga,
+        ])->assertOk()->assertJsonPath('resource.nama', 'Nama Baru Pegawai');
+
+        expect($product->fresh()->nama)->toBe('Nama Baru Pegawai');
+    });
 });
 
 describe('product destroy', function () {
@@ -171,6 +183,17 @@ describe('product destroy', function () {
         expect(Product::find($product->id))->toBeNull();
         expect(Product::withTrashed()->find($product->id))->not->toBeNull();
         expect(Product::withTrashed()->find($product->id)->trashed())->toBeTrue();
+    });
+
+    it('allows pegawai to soft delete a product', function () {
+        $pegawai = User::factory()->pegawai()->create();
+        $product = Product::factory()->create();
+
+        $this->actingAs($pegawai)->deleteJson("/products/{$product->id}")
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->assertSoftDeleted($product);
     });
 });
 
@@ -201,14 +224,38 @@ describe('product stock', function () {
         expect($product->fresh()->stok)->toBe(7);
     });
 
-    it('blocks pegawai from adjusting stock', function () {
+    it('allows pegawai to adjust stock', function () {
         $pegawai = User::factory()->pegawai()->create();
         $product = Product::factory()->create(['stok' => 10]);
 
         $this->actingAs($pegawai)->postJson("/products/{$product->id}/stock", [
             'aksi' => 'restok',
-            'jumlah' => 1,
-        ])->assertForbidden();
+            'jumlah' => 5,
+        ])->assertOk();
+
+        expect($product->fresh()->stok)->toBe(15)
+            ->and(StockMovement::where('product_id', $product->id)
+                ->where('user_id', $pegawai->id)
+                ->where('jumlah', 5)
+                ->exists())->toBeTrue();
+    });
+
+    it('allows pegawai to restock from stock management', function () {
+        $pegawai = User::factory()->pegawai()->create();
+        $product = Product::factory()->create(['stok' => 10]);
+
+        $this->actingAs($pegawai)->postJson('/stocks', [
+            'id_produk' => $product->id,
+            'tanggal' => now()->format('Y-m-d'),
+            'jumlah' => 5,
+            'keterangan' => 'Produksi oleh pegawai',
+        ])->assertCreated()->assertJsonPath('success', true);
+
+        expect($product->fresh()->stok)->toBe(15)
+            ->and(StockMovement::where('product_id', $product->id)
+                ->where('user_id', $pegawai->id)
+                ->where('jumlah', 5)
+                ->exists())->toBeTrue();
     });
 
     it('allows pegawai to view movements', function () {

@@ -114,10 +114,11 @@ function isEmail(v) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 }
 
-const products = (rows, kategoriMap, isAdmin) => ({
+const products = (rows, kategoriMap, isAdmin, canManageProducts) => ({
     rows,
     kategoriMap,
     isAdmin,
+    canManageProducts,
     search: '',
     modalOpen: false,
     editingId: null,
