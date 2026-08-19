@@ -8,9 +8,11 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn('dapat_melihat_dashboard');
-        });
+        if (Schema::hasColumn('users', 'dapat_melihat_dashboard')) {
+            Schema::table('users', function (Blueprint $table) {
+                $table->dropColumn('dapat_melihat_dashboard');
+            });
+        }
     }
 
     public function down(): void

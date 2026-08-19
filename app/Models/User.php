@@ -33,11 +33,6 @@ class User extends Authenticatable
         return $this->peran === 'admin';
     }
 
-    public function canSeeDashboard(): bool
-    {
-        return $this->isAdmin();
-    }
-
     /** @return HasMany<Income, $this> */
     public function incomes(): HasMany
     {

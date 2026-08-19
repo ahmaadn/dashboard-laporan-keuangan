@@ -39,7 +39,7 @@ class AuthController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended($user->isAdmin() ? '/dashboard' : '/income');
+        return redirect($user->isAdmin() ? '/dashboard' : '/income');
     }
 
     public function logout(Request $request)

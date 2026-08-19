@@ -34,9 +34,9 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::patch('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password.update');
 
-    Route::get('/dashboard', [DashboardController::class, 'index'])->middleware('dashboard');
-    Route::get('/api/dashboard', [DashboardController::class, 'data'])->middleware('dashboard');
-    Route::get('/api/dashboard/compare', [DashboardController::class, 'compare'])->middleware('dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->middleware('role:admin');
+    Route::get('/api/dashboard', [DashboardController::class, 'data'])->middleware('role:admin');
+    Route::get('/api/dashboard/compare', [DashboardController::class, 'compare'])->middleware('role:admin');
 
     Route::get('/products', [ProductController::class, 'index']);
     Route::post('/products', [ProductController::class, 'store'])->middleware('role:admin,pegawai');

@@ -24,6 +24,15 @@ describe('login', function () {
         $response->assertRedirect('/income');
     });
 
+    it('always redirects pegawai to income after login', function () {
+        $pegawai = User::factory()->pegawai()->create(['password' => 'password']);
+
+        $response = $this->withSession(['url.intended' => '/dashboard'])
+            ->post('/login', ['login' => $pegawai->username, 'password' => 'password']);
+
+        $response->assertRedirect('/income');
+    });
+
     it('accepts email as login field', function () {
         $admin = User::factory()->admin()->create(['password' => 'password']);
 

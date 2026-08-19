@@ -26,12 +26,11 @@ class AppServiceProvider extends ServiceProvider
             $user = Auth::user();
             $currentUser = $user ? UserResource::make($user)->resolve() : null;
             $isAdmin = $user?->isAdmin() ?? false;
-            $canSeeDashboard = $user?->canSeeDashboard() ?? false;
 
             // Urutan sesuai KEBUTUHAN_SISTEM.md poin 5 & REVISI_KONSEP_KEUANGAN.md
             // Bagian 9.1; menu tanpa hak akses Pegawai/admin tidak di-render.
             $menus = array_values(array_filter([
-                ['label' => 'Dashboard', 'url' => '/dashboard', 'icon' => 'dashboard', 'show' => $canSeeDashboard],
+                ['label' => 'Dashboard', 'url' => '/dashboard', 'icon' => 'dashboard', 'show' => $isAdmin],
                 ['label' => 'Data Produk', 'url' => '/products', 'icon' => 'products', 'show' => true],
                 ['label' => 'Kelola Stok', 'url' => '/stocks', 'icon' => 'stocks', 'show' => true],
                 ['label' => 'Pemasukan', 'url' => '/income', 'icon' => 'income', 'show' => true],
