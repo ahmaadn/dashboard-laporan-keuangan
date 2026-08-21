@@ -81,6 +81,70 @@ describe('user update', function () {
         ])->assertOk()->assertJsonPath('resource.nama', 'New Name');
     });
 
+    it('allows admin to update their own non-role fields', function () {
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)->putJson("/users/{$admin->id}", [
+            'nama' => 'Nama Baru Admin',
+            'nama_pengguna' => $admin->username,
+            'email' => $admin->email,
+            'peran' => 'admin',
+            'aktif' => true,
+        ])->assertOk()->assertJsonPath('resource.nama', 'Nama Baru Admin');
+    });
+
+    it('prevents admin from downgrading their own role', function () {
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)->putJson("/users/{$admin->id}", [
+            'nama' => $admin->nama,
+            'nama_pengguna' => $admin->username,
+            'email' => $admin->email,
+            'peran' => 'pegawai',
+            'aktif' => true,
+        ])->assertStatus(422);
+
+        expect($admin->fresh()->peran)->toBe('admin');
+    });
+
+    it('prevents downgrading the last active admin to pegawai', function () {
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($admin)->putJson("/users/{$admin->id}", [
+            'nama' => $admin->nama,
+            'nama_pengguna' => $admin->username,
+            'email' => $admin->email,
+            'peran' => 'pegawai',
+            'aktif' => true,
+        ])->assertStatus(422);
+
+        expect($admin->fresh()->peran)->toBe('admin');
+    });
+
+    it('allows admin to downgrade another admin when another active admin exists', function () {
+        $admin = User::factory()->admin()->create();
+        $other = User::factory()->admin()->create();
+
+        $this->actingAs($admin)->putJson("/users/{$other->id}", [
+            'nama' => $other->nama,
+            'nama_pengguna' => $other->username,
+            'email' => $other->email,
+            'peran' => 'pegawai',
+            'aktif' => true,
+        ])->assertOk();
+
+        expect($other->fresh()->peran)->toBe('pegawai');
+    });
+
+    it('allows admin to delete another admin', function () {
+        $admin = User::factory()->admin()->create();
+        $other = User::factory()->admin()->create();
+
+        $this->actingAs($admin)->deleteJson("/users/{$other->id}")->assertOk();
+        expect(User::find($other->id))->toBeNull();
+        expect(User::withTrashed()->find($other->id)->trashed())->toBeTrue();
+    });
+
     it('updates password when provided', function () {
         $admin = User::factory()->admin()->create();
         $user = User::factory()->create(['password' => 'oldpassword']);

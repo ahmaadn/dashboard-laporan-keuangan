@@ -40,16 +40,26 @@ class UserController extends Controller
         }
 
         $data = $request->mapped();
+        $isSelf = $request->user()->id === $user->id;
+
+        // Guard: an admin cannot change their own role.
+        if ($isSelf && $user->isAdmin() && $data['peran'] !== 'admin') {
+            return response()->json(['success' => false, 'message' => 'Anda tidak dapat mengubah peran akun Anda sendiri.'], 422);
+        }
 
         // Guard: don't deactivate the last active admin.
         if ($user->isAdmin() && $data['is_active'] === false) {
-            $activeAdmins = User::where('peran', 'admin')
-                ->where('is_active', true)
-                ->whereNull('deleted_at')
-                ->where('id', '!=', $user->id)
-                ->count();
+            $activeAdmins = $this->countOtherActiveAdmins($user->id);
             if ($activeAdmins === 0) {
                 return response()->json(['success' => false, 'message' => 'Tidak dapat menonaktifkan Admin terakhir.'], 422);
+            }
+        }
+
+        // Guard: don't downgrade the last active admin to pegawai.
+        if ($user->isAdmin() && $data['peran'] === 'pegawai') {
+            $activeAdmins = $this->countOtherActiveAdmins($user->id);
+            if ($activeAdmins === 0) {
+                return response()->json(['success' => false, 'message' => 'Tidak dapat menurunkan peran Admin terakhir menjadi Pegawai.'], 422);
             }
         }
 
@@ -68,5 +78,14 @@ class UserController extends Controller
         $user->delete();
 
         return response()->json(['success' => true]);
+    }
+
+    private function countOtherActiveAdmins(int $excludeId): int
+    {
+        return User::where('peran', 'admin')
+            ->where('is_active', true)
+            ->whereNull('deleted_at')
+            ->where('id', '!=', $excludeId)
+            ->count();
     }
 }

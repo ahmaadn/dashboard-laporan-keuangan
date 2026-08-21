@@ -108,10 +108,14 @@
                         </div>
                         <div>
                             <label class="form-label">Peran <span class="req">*</span></label>
-                            <select class="form-select" x-model="form.peran">
+                            <select class="form-select" x-model="form.peran"
+                                :disabled="isRoleLockedForSelf()">
                                 <option value="admin">Admin</option>
                                 <option value="pegawai">Pegawai</option>
                             </select>
+                            <div class="ld-field-error" x-show="isRoleLockedForSelf()" x-cloak>
+                                Anda tidak dapat mengubah peran akun Anda sendiri.
+                            </div>
                         </div>
                         <div class="full">
                             <label class="form-label">Status Akun</label>

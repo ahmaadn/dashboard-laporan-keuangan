@@ -980,6 +980,14 @@ const users = (rows, currentUser) => ({
         return row.peran === 'admin' && row.aktif && !row.dihapus_pada && this.activeAdminCount(row.id) === 0;
     },
 
+    isSelfEditing() {
+        return Boolean(this.editingId && this.currentUser && this.editingId === this.currentUser.id);
+    },
+
+    isRoleLockedForSelf() {
+        return this.isSelfEditing() && this.form.peran === 'admin';
+    },
+
     openAdd() {
         this.editingId = null;
         this.form = { nama: '', nama_pengguna: '', email: '', kata_sandi: '', peran: 'pegawai', aktif: true };
@@ -996,6 +1004,29 @@ const users = (rows, currentUser) => ({
 
     async save() {
         this.errors = {};
+        this.guardMessage = '';
+
+        // Client-side guard: prevent admin from downgrading their own role.
+        if (this.editingId && this.isSelfEditing() && this.form.peran !== 'admin') {
+            this.guardMessage = 'Anda tidak dapat mengubah peran akun Anda sendiri.';
+            setTimeout(() => (this.guardMessage = ''), 3000);
+            this.form.peran = 'admin';
+
+            return;
+        }
+
+        // Client-side guard: prevent downgrading the last active admin.
+        if (this.editingId && this.form.peran === 'pegawai') {
+            const row = this.rows.find((r) => r.id === this.editingId);
+            if (row && this.isLastAdmin({ ...row, peran: 'admin' })) {
+                this.guardMessage = 'Tidak dapat menurunkan peran Admin terakhir menjadi Pegawai.';
+                setTimeout(() => (this.guardMessage = ''), 3000);
+                this.form.peran = 'admin';
+
+                return;
+            }
+        }
+
         this.saving = true;
         const url = this.editingId ? `/users/${this.editingId}` : '/users';
         const method = this.editingId ? 'PUT' : 'POST';
