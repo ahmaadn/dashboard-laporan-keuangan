@@ -3,7 +3,7 @@
 ])
 
 <div class="ld-table-wrap">
-    <div class="{{ $scroll ? 'ld-table-wrap__scroll ld-scroll' : '' }}">
+    <div class="table-responsive">
         {{ $slot }}
     </div>
 </div>
