@@ -1195,10 +1195,12 @@ const stocks = (produk, produkById, currentUser) => ({
     },
 });
 
-const capital = (rows, penggunaById, currentUser) => ({
+const capital = (rows, debts, penggunaById, currentUser, totalDebt) => ({
     rows,
+    debts,
     penggunaById,
     currentUser,
+    totalDebt,
     isAdmin: currentUser?.peran === 'admin',
     today: todayStr(),
     search: '',
@@ -1208,6 +1210,9 @@ const capital = (rows, penggunaById, currentUser) => ({
     deleteTarget: null,
     toast: '',
     saving: false,
+    expandedId: null,
+    payModalOpen: false,
+    payForm: {},
 
     get visibleRows() {
         if (!this.search.trim()) {
@@ -1222,6 +1227,24 @@ const capital = (rows, penggunaById, currentUser) => ({
         this.form = { tanggal: todayStr(), nominal: '', keterangan: '' };
         this.errors = {};
         this.modalOpen = true;
+    },
+
+    openPayDebt() {
+        const debt = this.debts.find((item) => Number(item.sisa) > 0);
+        this.payForm = {
+            id_hutang: debt?.id || '',
+            tanggal: todayStr(),
+            nominal: '',
+            sumber: 'kas_usaha',
+            keterangan: '',
+        };
+        this.errors = {};
+        this.payModalOpen = true;
+    },
+
+    toggleExpand(row) {
+        if (!row.is_hutang) return;
+        this.expandedId = this.expandedId === row.id ? null : row.id;
     },
 
     async save() {
@@ -1244,9 +1267,56 @@ const capital = (rows, penggunaById, currentUser) => ({
 
             return;
         }
-        this.rows.unshift(res.resource);
+        const resource = res.resource;
+        this.rows.unshift(resource);
+        const debtResource = resource?.is_hutang ? resource : null;
+        if (debtResource) {
+            this.debts.unshift({
+                id: debtResource.id_hutang,
+                tanggal: debtResource.tanggal,
+                nominal: debtResource.hutang.nominal,
+                terbayar: 0,
+                sisa: debtResource.hutang.sisa,
+                pembayaran: [],
+                keterangan: debtResource.keterangan,
+            });
+            this.totalDebt += Number(debtResource.hutang.sisa);
+        }
         this.modalOpen = false;
-        this.toast = 'Setoran modal dicatat.';
+        this.toast = debtResource ? 'Modal dan hutang dicatat.' : 'Setoran modal dicatat.';
+        this.dismissToast();
+    },
+
+    async payDebt() {
+        this.errors = {};
+        this.saving = true;
+        const res = await apiFetch('/capital/debt-payments', {
+            method: 'POST',
+            body: JSON.stringify({
+                ...this.payForm,
+                id_hutang: Number(this.payForm.id_hutang),
+                nominal: parseRupiahInput(this.payForm.nominal),
+            }),
+        });
+        this.saving = false;
+        if (!res.success) {
+            if (res.errors) {
+                this.errors = Object.fromEntries(Object.entries(res.errors).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v]));
+            } else {
+                this.toast = res.message || 'Gagal mencatat pembayaran.';
+                this.dismissToast();
+            }
+            return;
+        }
+
+        const capitalRow = res.resource;
+        const rowIndex = this.rows.findIndex((row) => row.id === capitalRow.id);
+        if (rowIndex >= 0) this.rows[rowIndex] = capitalRow;
+        const debtIndex = this.debts.findIndex((debt) => debt.id === capitalRow.id_hutang);
+        if (debtIndex >= 0) this.debts[debtIndex] = { ...this.debts[debtIndex], ...capitalRow.hutang };
+        this.totalDebt = Number(res.total_hutang || 0);
+        this.payModalOpen = false;
+        this.toast = 'Pembayaran hutang dicatat.';
         this.dismissToast();
     },
 
@@ -1267,6 +1337,10 @@ const capital = (rows, penggunaById, currentUser) => ({
             return;
         }
         this.deleteTarget.dihapus_pada = nowStr();
+        if (this.deleteTarget.is_hutang) {
+            this.debts = this.debts.filter((debt) => debt.id !== this.deleteTarget.id_hutang);
+            this.totalDebt = this.debts.reduce((total, debt) => total + Number(debt.sisa || 0), 0);
+        }
         this.toast = 'Setoran dihapus (soft delete).';
         this.deleteTarget = null;
         this.dismissToast();

@@ -105,17 +105,18 @@ describe('cash balance guard', function () {
         expect(app(CashBalanceService::class)->saldo())->toBe(100000.0);
     });
 
-    it('treats negative capital as cash out', function () {
+    it('counts the normal capital companion but not the debt memorandum as cash', function () {
         CapitalInjection::factory()->create([
             'tanggal' => today()->toDateString(),
             'nominal' => 300000,
         ]);
-        CapitalInjection::factory()->create([
+        $admin = User::factory()->admin()->create();
+        $this->actingAs($admin)->postJson('/capital', [
             'tanggal' => today()->toDateString(),
             'nominal' => -125000,
-        ]);
+        ])->assertCreated();
 
-        expect(app(CashBalanceService::class)->saldo())->toBe(175000.0);
+        expect(app(CashBalanceService::class)->saldo())->toBe(425000.0);
     });
 
     it('excludes soft deleted expenses from the balance', function () {

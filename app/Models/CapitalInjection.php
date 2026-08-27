@@ -6,6 +6,7 @@ use Database\Factories\CapitalInjectionFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -22,6 +23,7 @@ class CapitalInjection extends Model
         'user_id',
         'tanggal',
         'nominal',
+        'debt_id',
         'keterangan',
     ];
 
@@ -30,6 +32,7 @@ class CapitalInjection extends Model
         return [
             'tanggal' => 'date',
             'nominal' => 'decimal:2',
+            'debt_id' => 'integer',
             'deleted_at' => 'datetime',
         ];
     }
@@ -38,5 +41,17 @@ class CapitalInjection extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id')->withTrashed();
+    }
+
+    /** @return BelongsTo<Debt, $this> */
+    public function debt(): BelongsTo
+    {
+        return $this->belongsTo(Debt::class);
+    }
+
+    /** @return HasOne<Debt, $this> */
+    public function debtForDisplay(): HasOne
+    {
+        return $this->hasOne(Debt::class, 'capital_injection_id');
     }
 }

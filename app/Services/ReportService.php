@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\CapitalInjection;
+use App\Models\Debt;
+use App\Models\DebtPayment;
 use App\Models\Expense;
 use App\Models\ExpenseCategory;
 use App\Models\HppAdjustment;
@@ -30,10 +32,10 @@ use Carbon\CarbonInterface;
  * - labaBersih           = labaKotor - biayaOperasional
  * - pembelianBahanBaku   = SUM(expenses) WHERE category.is_bahan_baku = true
  * - pengeluaranKas       = pembelianBahanBaku + biayaOperasional
- * - modalTotal           = SUM(capital_injections.nominal)      [pembiayaan, bukan pendapatan]
- * - arusKasMasuk         = penjualan + SUM(modal positif)
+ * - modalTotal           = SUM(modal riil; modal terkait hutang tidak memengaruhi kas)
+ * - arusKasMasuk         = penjualan + modalTotal
  * - returKeluar          = returTotal                             [uang dikembalikan ke pelanggan]
- * - arusKasKeluar        = pengeluaranKas + returKeluar + ABS(SUM(modal negatif))
+ * - arusKasKeluar        = pengeluaranKas + returKeluar + pembayaran hutang dari kas usaha
  * - arusKasBersih        = arusKasMasuk - arusKasKeluar
  *
  * {@see self::cashJournal()} memecah arusKasBersih menjadi jurnal per transaksi
@@ -282,16 +284,20 @@ final class ReportService
         $pengeluaranKas = $pembelianBahanBaku + $biayaOperasional;
         $labaBersih = $labaKotor - $biayaOperasional;
 
-        $modalTotal = (float) CapitalInjection::whereBetween('tanggal', [$startSql, $endSql])->sum('nominal');
-        $modalMasuk = (float) CapitalInjection::whereBetween('tanggal', [$startSql, $endSql])
-            ->where('nominal', '>', 0)
+        $modalTotal = (float) CapitalInjection::whereBetween('tanggal', [$startSql, $endSql])
+            ->whereNull('debt_id')
             ->sum('nominal');
-        $modalKeluar = abs((float) CapitalInjection::whereBetween('tanggal', [$startSql, $endSql])
-            ->where('nominal', '<', 0)
-            ->sum('nominal'));
+        $modalMasuk = (float) CapitalInjection::whereBetween('tanggal', [$startSql, $endSql])
+            ->whereNull('debt_id')
+            ->sum('nominal');
+        $debtCreated = (float) Debt::where('tanggal', '<=', $endSql)->sum('nominal');
+        $debtPayments = (float) DebtPayment::where('tanggal', '<=', $endSql)->sum('nominal');
+        $debtCashPayments = (float) DebtPayment::whereBetween('tanggal', [$startSql, $endSql])
+            ->where('sumber', 'kas_usaha')
+            ->sum('nominal');
         $arusKasMasuk = $penjualan + $modalMasuk;
         $returKeluar = $returTotal;
-        $arusKasKeluar = $pengeluaranKas + $returKeluar + $modalKeluar;
+        $arusKasKeluar = $pengeluaranKas + $returKeluar + $debtCashPayments;
         $arusKasBersih = $arusKasMasuk - $arusKasKeluar;
 
         return [
@@ -310,7 +316,9 @@ final class ReportService
             'labaBersih' => $labaBersih,
             'modalTotal' => $modalTotal,
             'modalMasuk' => $modalMasuk,
-            'hutangPiutang' => $modalKeluar,
+            'hutangPiutang' => $debtCreated - $debtPayments,
+            'hutangTerutang' => max(0, $debtCreated - $debtPayments),
+            'pembayaranHutangKas' => $debtCashPayments,
             'returKeluar' => $returKeluar,
             'arusKasMasuk' => $arusKasMasuk,
             'arusKasKeluar' => $arusKasKeluar,
@@ -320,8 +328,8 @@ final class ReportService
 
     /**
      * Jurnal arus kas: seluruh mutasi kas pada periode, terurut tanggal, dengan
-     * saldo berjalan. Nominal modal positif dicatat sebagai kas masuk; nominal
-     * negatif dicatat sebagai hutang/piutang dan kas keluar.
+     * saldo berjalan. Pencatatan hutang tidak memengaruhi kas; hanya pembayaran
+     * hutang yang bersumber dari kas usaha yang dicatat sebagai kas keluar.
      *
      * Saldo awal dihitung kumulatif sebelum tanggal mulai, sehingga saldo akhir
      * jurnal sama dengan saldo kas kumulatif pada akhir periode.
@@ -359,21 +367,37 @@ final class ReportService
         }
 
         foreach (CapitalInjection::query()
+            ->whereNull('debt_id')
             ->whereBetween('tanggal', [$startSql, $endSql])
             ->orderBy('tanggal')
             ->orderBy('id')
             ->get() as $row) {
             $nominal = (int) $row->nominal;
-            $isMasuk = $nominal > 0;
-
             $entries[] = [
                 'tanggal' => $row->tanggal?->format('Y-m-d'),
-                'jenis' => $isMasuk ? 'masuk' : 'keluar',
-                'sumber' => $isMasuk ? 'modal' : 'hutang_piutang',
-                'kategori' => $isMasuk ? 'Modal / Setoran Pemilik' : 'Hutang / Piutang',
-                'keterangan' => $row->keterangan ?: ($isMasuk ? 'Setoran modal' : 'Hutang/piutang pemilik'),
-                'masuk' => $isMasuk ? $nominal : 0,
-                'keluar' => $isMasuk ? 0 : abs($nominal),
+                'jenis' => 'masuk',
+                'sumber' => 'modal',
+                'kategori' => 'Modal / Setoran Pemilik',
+                'keterangan' => $row->keterangan ?: 'Setoran modal',
+                'masuk' => $nominal,
+                'keluar' => 0,
+            ];
+        }
+
+        foreach (DebtPayment::query()
+            ->where('sumber', 'kas_usaha')
+            ->whereBetween('tanggal', [$startSql, $endSql])
+            ->orderBy('tanggal')
+            ->orderBy('id')
+            ->get() as $row) {
+            $entries[] = [
+                'tanggal' => $row->tanggal?->format('Y-m-d'),
+                'jenis' => 'keluar',
+                'sumber' => 'pembayaran_hutang',
+                'kategori' => 'Pembayaran Hutang',
+                'keterangan' => $row->keterangan ?: 'Pembayaran hutang dari kas usaha',
+                'masuk' => 0,
+                'keluar' => (int) $row->nominal,
             ];
         }
 
@@ -506,6 +530,18 @@ final class ReportService
             ->get();
         foreach ($expenseRows as $row) {
             $idx = $this->bucketIndex($buckets, $row->tanggal_transaksi->format('Y-m-d'), $granularity);
+            if ($idx !== null) {
+                $kasKeluar[$idx] += (float) $row->nominal;
+            }
+        }
+
+        $debtPaymentRows = DebtPayment::query()
+            ->where('sumber', 'kas_usaha')
+            ->whereBetween('tanggal', [$startSql, $endSql])
+            ->select('tanggal', 'nominal')
+            ->get();
+        foreach ($debtPaymentRows as $row) {
+            $idx = $this->bucketIndex($buckets, $row->tanggal->format('Y-m-d'), $granularity);
             if ($idx !== null) {
                 $kasKeluar[$idx] += (float) $row->nominal;
             }

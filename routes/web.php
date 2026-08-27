@@ -72,6 +72,7 @@ Route::middleware('auth')->group(function () {
     // Modal / setoran pemilik — admin only (lihat Bagian 2.1)
     Route::get('/capital', [CapitalController::class, 'index'])->middleware('role:admin');
     Route::post('/capital', [CapitalController::class, 'store'])->middleware('role:admin');
+    Route::post('/capital/debt-payments', [CapitalController::class, 'pay'])->middleware('role:admin');
     Route::delete('/capital/{capitalInjection}', [CapitalController::class, 'destroy'])->middleware('role:admin');
 
     Route::get('/users', [UserController::class, 'index'])->middleware('role:admin');

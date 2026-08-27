@@ -186,25 +186,25 @@ describe('jurnal arus kas', function () {
         expect(end($journal['entries'])['saldo'])->toBe($journal['saldoAkhir']);
     });
 
-    it('records negative capital as hutang piutang cash out', function () {
+    it('excludes debt recognition from the cash journal', function () {
         $admin = User::factory()->admin()->create();
 
-        CapitalInjection::factory()->create([
-            'user_id' => $admin->id,
+        $this->actingAs($admin)->postJson('/capital', [
             'tanggal' => AppTimezone::todayDateString(),
             'nominal' => -250000,
-            'keterangan' => 'Piutang pemilik',
-        ]);
+            'keterangan' => 'Pinjaman pemilik',
+        ])->assertCreated();
 
         $journal = $this->actingAs($admin)
             ->get('/reports?period=bulan_ini')
             ->viewData('report')['cashJournal'];
 
-        expect($journal['totalMasuk'])->toBe(0)
-            ->and($journal['totalKeluar'])->toBe(250000)
-            ->and($journal['entries'][0]['kategori'])->toBe('Hutang / Piutang')
-            ->and($journal['entries'][0]['masuk'])->toBe(0)
-            ->and($journal['entries'][0]['keluar'])->toBe(250000);
+        expect($journal['totalMasuk'])->toBe(250000)
+            ->and($journal['totalKeluar'])->toBe(0)
+            ->and($journal['entries'])->toHaveCount(1)
+            ->and($journal['entries'][0]['sumber'])->toBe('modal')
+            ->and($journal['entries'][0]['masuk'])->toBe(250000)
+            ->and($journal['entries'][0]['keluar'])->toBe(0);
     });
 
     it('carries the opening balance from movements before the period', function () {

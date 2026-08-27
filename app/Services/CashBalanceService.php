@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\CapitalInjection;
+use App\Models\DebtPayment;
 use App\Models\Expense;
 use App\Models\Income;
 use App\Models\SalesReturn;
@@ -11,8 +12,8 @@ use App\Models\SalesReturn;
  * Saldo kas kumulatif sejak awal pencatatan (bukan per periode).
  *
  * Definisi:
- * - kasMasuk  = SUM(incomes.total) + SUM(capital_injections.nominal > 0)
- * - kasKeluar = SUM(expenses.nominal) + SUM(sales_returns.nominal_retur) + ABS(SUM(capital_injections.nominal < 0))
+ * - kasMasuk  = SUM(incomes.total) + SUM(capital_injections.nominal tanpa hutang)
+ * - kasKeluar = SUM(expenses.nominal) + SUM(sales_returns.nominal_retur) + SUM(pembayaran hutang dari kas usaha)
  * - saldo     = kasMasuk - kasKeluar
  *
  * Baris soft-deleted dikecualikan otomatis oleh global scope SoftDeletes.
@@ -31,7 +32,7 @@ final class CashBalanceService
     {
         $penjualan = (float) $this->applyDateBound(Income::query(), 'tanggal_transaksi', $sampaiTanggal)->sum('total');
         $modal = (float) $this->applyDateBound(CapitalInjection::query(), 'tanggal', $sampaiTanggal)
-            ->where('nominal', '>', 0)
+            ->whereNull('debt_id')
             ->sum('nominal');
 
         return $penjualan + $modal;
@@ -47,11 +48,11 @@ final class CashBalanceService
         $retur = (float) $this->applyDateBound($returQuery, 'sales_returns.tanggal', $sampaiTanggal)
             ->sum('sales_returns.nominal_retur');
 
-        $hutangPiutang = (float) $this->applyDateBound(CapitalInjection::query(), 'tanggal', $sampaiTanggal)
-            ->where('nominal', '<', 0)
+        $pembayaranHutang = (float) $this->applyDateBound(DebtPayment::query(), 'tanggal', $sampaiTanggal)
+            ->where('sumber', 'kas_usaha')
             ->sum('nominal');
 
-        return $pengeluaran + $retur + abs($hutangPiutang);
+        return $pengeluaran + $retur + $pembayaranHutang;
     }
 
     /**
