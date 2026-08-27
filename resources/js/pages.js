@@ -222,9 +222,9 @@ const products = (rows, kategoriMap, isAdmin, canManageProducts) => ({
         this.dismissToast();
     },
 
-    openStock(row, aksi) {
+    openStock(row) {
         this.stockModal = row;
-        this.stockForm = { aksi, jumlah: 1, stok_baru: row.stok, keterangan: '' };
+        this.stockForm = { aksi: 'koreksi', stok_baru: row.stok, keterangan: '' };
         this.stockErrors = {};
     },
 
@@ -232,14 +232,10 @@ const products = (rows, kategoriMap, isAdmin, canManageProducts) => ({
         if (!this.stockModal) return;
         this.stockErrors = {};
         const body = {
-            aksi: this.stockForm.aksi,
+            aksi: 'koreksi',
+            stok_baru: Number(this.stockForm.stok_baru),
             keterangan: this.stockForm.keterangan || null,
         };
-        if (this.stockForm.aksi === 'restok') {
-            body.jumlah = Number(this.stockForm.jumlah);
-        } else {
-            body.stok_baru = Number(this.stockForm.stok_baru);
-        }
         const res = await apiFetch(`/products/${this.stockModal.id}/stock`, {
             method: 'POST',
             body: JSON.stringify(body),

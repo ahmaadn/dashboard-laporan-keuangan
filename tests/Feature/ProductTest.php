@@ -212,16 +212,38 @@ describe('product stock', function () {
         expect(StockMovement::where('product_id', $product->id)->where('sumber', 'restok')->exists())->toBeTrue();
     });
 
-    it('corrects stock to absolute value', function () {
+    it('increases stock from the edit stock action', function () {
+        $admin = User::factory()->admin()->create();
+        $product = Product::factory()->create(['stok' => 10]);
+
+        $this->actingAs($admin)->postJson("/products/{$product->id}/stock", [
+            'aksi' => 'koreksi',
+            'stok_baru' => 17,
+            'keterangan' => 'Penyesuaian stok masuk',
+        ])->assertOk();
+
+        expect($product->fresh()->stok)->toBe(17)
+            ->and(StockMovement::where('product_id', $product->id)
+                ->where('jenis', 'koreksi')
+                ->where('jumlah', 7)
+                ->exists())->toBeTrue();
+    });
+
+    it('decreases stock from the edit stock action', function () {
         $admin = User::factory()->admin()->create();
         $product = Product::factory()->create(['stok' => 10]);
 
         $this->actingAs($admin)->postJson("/products/{$product->id}/stock", [
             'aksi' => 'koreksi',
             'stok_baru' => 7,
+            'keterangan' => 'Penyesuaian stok keluar',
         ])->assertOk();
 
-        expect($product->fresh()->stok)->toBe(7);
+        expect($product->fresh()->stok)->toBe(7)
+            ->and(StockMovement::where('product_id', $product->id)
+                ->where('jenis', 'koreksi')
+                ->where('jumlah', -3)
+                ->exists())->toBeTrue();
     });
 
     it('allows pegawai to adjust stock', function () {

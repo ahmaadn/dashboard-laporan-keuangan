@@ -1066,6 +1066,10 @@ a:focus-visible {
     text-wrap-mode: nowrap;
 }
 
+.stat-card__value.tnum {
+    font-size: 1.5rem;
+}
+
 /* --- Scrollbar tidy for offcanvas / tables --- */
 .ld-scroll::-webkit-scrollbar {
     height: 8px;

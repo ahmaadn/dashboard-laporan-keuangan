@@ -9,11 +9,11 @@
 
 @section('content')
     <div x-data="products(
-        @js($produk),
-        @js($kategoriProduk),
-        @js($currentUser['peran'] === 'admin'),
-        @js(auth()->user()->can('manage', App\Models\Product::class))
-    )">
+            @js($produk),
+            @js($kategoriProduk),
+            @js($currentUser['peran'] === 'admin'),
+            @js(auth()->user()->can('manage', App\Models\Product::class))
+        )">
 
         <x-page-header eyebrow="Master Data" title="Data Produk">
             <x-slot:actions>
@@ -66,15 +66,12 @@
                                 <td class="text-end" x-cloak>
                                     {{-- TIdak Aktikan dulu fitur riwayat
                                     <!-- <button type="button" class="ld-action-link ld-action-link--neutral" x-show="!row.dihapus_pada"
-                                            @click="openMovements(row)">Riwayat</button> -->
+                                                @click="openMovements(row)">Riwayat</button> -->
                                     --}}
                                     <template x-if="canManageProducts && !row.dihapus_pada">
                                         <span>
                                             <button type="button" class="ld-action-link ld-action-link--success"
-                                                @click="openStock(row, 'restok')">+
-                                                Stok</button>
-                                            <button type="button" class="ld-action-link ld-action-link--neutral"
-                                                @click="openStock(row, 'koreksi')">Sesuaikan</button>
+                                                @click="openStock(row)">Stok</button>
                                             <button type="button" class="ld-action-link ld-action-link--primary"
                                                 @click="openEdit(row)">Ubah</button>
                                             <button type="button" class="ld-action-link ld-action-link--danger"
@@ -188,19 +185,17 @@
             @click.self="stockModal = null" x-transition.opacity>
             <div class="ld-modal__dialog" x-transition>
                 <div class="ld-modal__header">
-                    <h5 class="ld-modal__title" x-text="stockForm.aksi === 'restok' ? 'Tambah Stok' : 'Sesuaikan Stok'">
-                    </h5>
+                    <h5 class="ld-modal__title">Edit Stok</h5>
                     <button type="button" class="btn-close" @click="stockModal = null" aria-label="Tutup"></button>
                 </div>
                 <div class="ld-modal__body">
                     <p class="ld-body-sm mb-3" x-text="stockModal?.nama"></p>
                     <div class="ld-form-grid">
-                        <div x-show="stockForm.aksi === 'restok'">
-                            <label class="form-label">Jumlah Masuk <span class="req">*</span></label>
-                            <input type="number" min="1" class="form-control" x-model="stockForm.jumlah">
-                            <div class="ld-field-error" x-show="stockErrors.jumlah" x-text="stockErrors.jumlah"></div>
+                        <div>
+                            <label class="form-label">Stok Saat Ini</label>
+                            <input type="number" class="form-control" :value="stockModal?.stok ?? 0" disabled>
                         </div>
-                        <div x-show="stockForm.aksi === 'koreksi'">
+                        <div>
                             <label class="form-label">Stok Baru <span class="req">*</span></label>
                             <input type="number" min="0" class="form-control" x-model="stockForm.stok_baru">
                             <div class="ld-field-error" x-show="stockErrors.stok_baru" x-text="stockErrors.stok_baru"></div>
