@@ -70,8 +70,9 @@
                                     --}}
                                     <template x-if="canManageProducts && !row.dihapus_pada">
                                         <span>
+                                            {{-- TIdak Aktikan dulu fitur STOK
                                             <button type="button" class="ld-action-link ld-action-link--success"
-                                                @click="openStock(row)">Stok</button>
+                                                @click="openStock(row)">Stok</button> --}}
                                             <button type="button" class="ld-action-link ld-action-link--primary"
                                                 @click="openEdit(row)">Ubah</button>
                                             <button type="button" class="ld-action-link ld-action-link--danger"
