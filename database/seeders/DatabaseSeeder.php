@@ -43,7 +43,7 @@ class DatabaseSeeder extends Seeder
 
     private function seedProductCategories(): void
     {
-        foreach (['Dompet', 'Tas', 'Sabuk', 'Aksesoris'] as $nama) {
+        foreach (['DoLiampet', 'Tas', 'Sabuk', 'Aksesoris', 'Jaket', 'Hand Bag', 'Lain lain'] as $nama) {
             ProductCategory::firstOrCreate(['nama' => $nama]);
         }
     }

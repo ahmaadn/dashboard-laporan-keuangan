@@ -433,7 +433,6 @@
                 </div>
                 <p class="ld-caption mb-0">
                     Retur penjualan adalah pengurang pendapatan (bukan beban).
-                    Lihat Bagian 2.4 dokumen acuan.
                 </p>
             </div>
         </x-offcanvas-detail>

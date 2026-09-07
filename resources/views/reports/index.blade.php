@@ -29,7 +29,6 @@
                     </div>
                     <p class="ld-caption mb-0">
                         Retur penjualan adalah pengurang pendapatan (bukan beban).
-                        Lihat Bagian 2.4 dokumen acuan.
                     </p>
                 </div>
             </x-offcanvas-detail>
@@ -369,195 +368,195 @@
             </x-app-card>
             {{-- TAMPILAN RINGKAS (untuk pemula/awam) --}}
             <!-- <template x-if="viewMode === 'simple'">
-                                                                @php
-                                                                    $operasionalCategories = collect($report['expenseByCategory'])->where('is_bahan_baku', false)->sortByDesc('total')->values();
-                                                                    $biayaOperasionalTotal = $operasionalCategories->sum('total');
-                                                                @endphp
-                                                                <x-app-card class="mb-4" eyebrow="Ringkasan" title="Ringkasan Laporan Keuangan">
-                                                                    <div class="d-flex flex-column gap-3">
-                                                                        {{-- Pendapatan --}}
-                                                                        <div class="p-3 bg-light rounded">
-                                                                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                                                                <span class="fw-medium fs-5">Uang Masuk (Hasil Jualan)</span>
-                                                                                <span class="tnum fw-bold text-success fs-5">@rupiah($report['pendapatanBersih'])</span>
-                                                                            </div>
-                                                                            <div class="d-flex justify-content-between small text-muted">
-                                                                                <span>Penjualan kotor</span>
-                                                                                <span>@rupiah($report['penjualan'])</span>
-                                                                            </div>
-                                                                            <div class="d-flex justify-content-between small text-danger">
-                                                                                <span>− Retur (barang dikembalikan)</span>
-                                                                                <span>@rupiah($report['returTotal'])</span>
-                                                                            </div>
-                                                                            <p class="ld-caption mb-0 text-muted">
-                                                                                <i class="bi bi-info-circle me-1"><strong>Keterangan:</strong></i>Ini uang yang benar-benar
-                                                                                masuk ke kantong usaha dari
-                                                                                menjual produk.
-                                                                            </p>
-                                                                        </div>
+                                                                            @php
+                                                                                $operasionalCategories = collect($report['expenseByCategory'])->where('is_bahan_baku', false)->sortByDesc('total')->values();
+                                                                                $biayaOperasionalTotal = $operasionalCategories->sum('total');
+                                                                            @endphp
+                                                                            <x-app-card class="mb-4" eyebrow="Ringkasan" title="Ringkasan Laporan Keuangan">
+                                                                                <div class="d-flex flex-column gap-3">
+                                                                                    {{-- Pendapatan --}}
+                                                                                    <div class="p-3 bg-light rounded">
+                                                                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                                                                            <span class="fw-medium fs-5">Uang Masuk (Hasil Jualan)</span>
+                                                                                            <span class="tnum fw-bold text-success fs-5">@rupiah($report['pendapatanBersih'])</span>
+                                                                                        </div>
+                                                                                        <div class="d-flex justify-content-between small text-muted">
+                                                                                            <span>Penjualan kotor</span>
+                                                                                            <span>@rupiah($report['penjualan'])</span>
+                                                                                        </div>
+                                                                                        <div class="d-flex justify-content-between small text-danger">
+                                                                                            <span>− Retur (barang dikembalikan)</span>
+                                                                                            <span>@rupiah($report['returTotal'])</span>
+                                                                                        </div>
+                                                                                        <p class="ld-caption mb-0 text-muted">
+                                                                                            <i class="bi bi-info-circle me-1"><strong>Keterangan:</strong></i>Ini uang yang benar-benar
+                                                                                            masuk ke kantong usaha dari
+                                                                                            menjual produk.
+                                                                                        </p>
+                                                                                    </div>
 
-                                                                        {{-- HPP --}}
-                                                                        <div class="p-3 bg-light rounded">
-                                                                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                                                                <span class="fw-medium fs-5">Modal Bahan Produk Terjual (HPP)</span>
-                                                                                <span class="tnum fw-bold text-danger fs-5">@rupiah($report['hpp'])</span>
-                                                                            </div>
-                                                                            <div class="d-flex justify-content-between small text-muted">
-                                                                                <span>HPP produk terjual</span>
-                                                                                <span>@rupiah($report['hppPenjualan'])</span>
-                                                                            </div>
-                                                                            @if ($report['hppPenyesuaianTotal'] != 0)
-                                                                                <div class="d-flex justify-content-between small text-warning">
-                                                                                    <span>+/− Koreksi HPP</span>
-                                                                                    <span>@rupiah($report['hppPenyesuaianTotal'])</span>
+                                                                                    {{-- HPP --}}
+                                                                                    <div class="p-3 bg-light rounded">
+                                                                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                                                                            <span class="fw-medium fs-5">Modal Bahan Produk Terjual (HPP)</span>
+                                                                                            <span class="tnum fw-bold text-danger fs-5">@rupiah($report['hpp'])</span>
+                                                                                        </div>
+                                                                                        <div class="d-flex justify-content-between small text-muted">
+                                                                                            <span>HPP produk terjual</span>
+                                                                                            <span>@rupiah($report['hppPenjualan'])</span>
+                                                                                        </div>
+                                                                                        @if ($report['hppPenyesuaianTotal'] != 0)
+                                                                                            <div class="d-flex justify-content-between small text-warning">
+                                                                                                <span>+/− Koreksi HPP</span>
+                                                                                                <span>@rupiah($report['hppPenyesuaianTotal'])</span>
+                                                                                            </div>
+                                                                                        @endif
+                                                                                        <p class="ld-caption mb-0 text-muted">
+                                                                                            <i class="bi bi-info-circle me-1"><strong>Keterangan:</strong></i>Nilai bahan baku yang terpakai
+                                                                                            untuk produk yang sudah
+                                                                                            terjual (bukan semua bahan yang dibeli).
+                                                                                        </p>
+                                                                                    </div>
+
+                                                                                    {{-- Laba Kotor --}}
+                                                                                    <div class="p-3 bg-light rounded">
+                                                                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                                                                            <span class="fw-medium fs-5">Untung dari Jualan (Laba Kotor)</span>
+                                                                                            <span class="tnum fw-bold fs-5"
+                                                                                                :class="$report['labaKotor'] >= 0 ? 'text-success' : 'text-danger'">@rupiah($report['labaKotor'])</span>
+                                                                                        </div>
+                                                                                        <div class="d-flex justify-content-between small text-muted">
+                                                                                            <span>Hasil jualan bersih</span>
+                                                                                            <span>@rupiah($report['pendapatanBersih'])</span>
+                                                                                        </div>
+                                                                                        <div class="d-flex justify-content-between small text-danger">
+                                                                                            <span>− Modal bahan (HPP)</span>
+                                                                                            <span>@rupiah($report['hpp'])</span>
+                                                                                        </div>
+                                                                                        <p class="ld-caption mb-0 text-muted">
+                                                                                            <i class="bi bi-info-circle me-1"><strong>Keterangan:</strong></i>Untung dari menjual produk
+                                                                                            saja, belum dikurangi biaya
+                                                                                            operasional (packing, marketing, kirim).
+                                                                                        </p>
+                                                                                    </div>
+
+                                                                                    {{-- Beban Operasional --}}
+                                                                                    <div class="p-3 bg-light rounded">
+                                                                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                                                                            <span class="fw-medium fs-5">Biaya Menjalankan Usaha</span>
+                                                                                            <span class="tnum fw-bold text-danger fs-5">@rupiah($biayaOperasionalTotal)</span>
+                                                                                        </div>
+                                                                                        @foreach ($operasionalCategories as $cat)
+                                                                                            <div class="d-flex justify-content-between small">
+                                                                                                <span class="text-danger">− {{ $cat['nama'] }}</span>
+                                                                                                <span>@rupiah($cat['total'])</span>
+                                                                                            </div>
+                                                                                        @endforeach
+                                                                                        <p class="ld-caption mb-0 text-muted">
+                                                                                            <i class="bi bi-info-circle me-1"><strong>Keterangan:</strong></i>Biaya rutin yang termasuk
+                                                                                            packing, iklan/marketing, ongkir (jika
+                                                                                            ditanggung toko).
+                                                                                        </p>
+                                                                                    </div>
+
+                                                                                    {{-- Laba Bersih --}}
+                                                                                    <div class="p-3 rounded"
+                                                                                        :class="$report['labaBersih'] >= 0 ? 'bg-success-subtle border border-success' : 'bg-danger-subtle border border-danger'">
+                                                                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                                                                            <span class="fw-medium fs-5">Untung Bersih Usaha (Laba Bersih)</span>
+                                                                                            <span class="tnum fw-bold fs-5"
+                                                                                                :class="$report['labaBersih'] >= 0 ? 'text-success' : 'text-danger'">@rupiah($report['labaBersih'])</span>
+                                                                                        </div>
+                                                                                        <div class="d-flex justify-content-between small">
+                                                                                            <span>Untung dari jualan (Laba Kotor)</span>
+                                                                                            <span>@rupiah($report['labaKotor'])</span>
+                                                                                        </div>
+                                                                                        <div class="d-flex justify-content-between small text-danger">
+                                                                                            <span>− Biaya menjalankan usaha</span>
+                                                                                            <span>@rupiah($biayaOperasionalTotal)</span>
+                                                                                        </div>
+                                                                                        <p class="ld-caption mb-0">
+                                                                                            <i class="bi bi-check-circle me-1"><strong>Keterangan:</strong></i> untung usaha
+                                                                                            pada periode ini.
+                                                                                        </p>
+                                                                                    </div>
+
+                                                                                    {{-- Arus Kas --}}
+                                                                                    <div class="p-3  border border-primary rounded">
+                                                                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                                                                            <span class="fw-medium fs-5">Uang Kas Tersedia (Arus Kas Bersih)</span>
+                                                                                            <span class="tnum fw-bold fs-5">@rupiah($report['arusKasBersih'])</span>
+                                                                                        </div>
+                                                                                        <div class="d-flex justify-content-between small text-muted">
+                                                                                            <span>Semua uang masuk (jualan + modal)</span>
+                                                                                            <span>@rupiah($report['arusKasMasuk'])</span>
+                                                                                        </div>
+                                                                                        <div class="d-flex justify-content-between small text-danger">
+                                                                                            <span>− Semua uang keluar (belanja + operasional)</span>
+                                                                                            <span>@rupiah($report['arusKasKeluar'])</span>
+                                                                                        </div>
+                                                                                        <p class="ld-caption mb-0 text-muted">
+                                                                                            <i class="bi bi-info-circle me-1"><strong>Keterangan:</strong></i><strong>Beda dengan Laba
+                                                                                                Bersih!</strong> Ini cek kas
+                                                                                            riil. Termasuk modal masuk, belanja bahan (bukan HPP).
+                                                                                        </p>
+                                                                                    </div>
                                                                                 </div>
-                                                                            @endif
-                                                                            <p class="ld-caption mb-0 text-muted">
-                                                                                <i class="bi bi-info-circle me-1"><strong>Keterangan:</strong></i>Nilai bahan baku yang terpakai
-                                                                                untuk produk yang sudah
-                                                                                terjual (bukan semua bahan yang dibeli).
-                                                                            </p>
-                                                                        </div>
-
-                                                                        {{-- Laba Kotor --}}
-                                                                        <div class="p-3 bg-light rounded">
-                                                                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                                                                <span class="fw-medium fs-5">Untung dari Jualan (Laba Kotor)</span>
-                                                                                <span class="tnum fw-bold fs-5"
-                                                                                    :class="$report['labaKotor'] >= 0 ? 'text-success' : 'text-danger'">@rupiah($report['labaKotor'])</span>
-                                                                            </div>
-                                                                            <div class="d-flex justify-content-between small text-muted">
-                                                                                <span>Hasil jualan bersih</span>
-                                                                                <span>@rupiah($report['pendapatanBersih'])</span>
-                                                                            </div>
-                                                                            <div class="d-flex justify-content-between small text-danger">
-                                                                                <span>− Modal bahan (HPP)</span>
-                                                                                <span>@rupiah($report['hpp'])</span>
-                                                                            </div>
-                                                                            <p class="ld-caption mb-0 text-muted">
-                                                                                <i class="bi bi-info-circle me-1"><strong>Keterangan:</strong></i>Untung dari menjual produk
-                                                                                saja, belum dikurangi biaya
-                                                                                operasional (packing, marketing, kirim).
-                                                                            </p>
-                                                                        </div>
-
-                                                                        {{-- Beban Operasional --}}
-                                                                        <div class="p-3 bg-light rounded">
-                                                                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                                                                <span class="fw-medium fs-5">Biaya Menjalankan Usaha</span>
-                                                                                <span class="tnum fw-bold text-danger fs-5">@rupiah($biayaOperasionalTotal)</span>
-                                                                            </div>
-                                                                            @foreach ($operasionalCategories as $cat)
-                                                                                <div class="d-flex justify-content-between small">
-                                                                                    <span class="text-danger">− {{ $cat['nama'] }}</span>
-                                                                                    <span>@rupiah($cat['total'])</span>
-                                                                                </div>
-                                                                            @endforeach
-                                                                            <p class="ld-caption mb-0 text-muted">
-                                                                                <i class="bi bi-info-circle me-1"><strong>Keterangan:</strong></i>Biaya rutin yang termasuk
-                                                                                packing, iklan/marketing, ongkir (jika
-                                                                                ditanggung toko).
-                                                                            </p>
-                                                                        </div>
-
-                                                                        {{-- Laba Bersih --}}
-                                                                        <div class="p-3 rounded"
-                                                                            :class="$report['labaBersih'] >= 0 ? 'bg-success-subtle border border-success' : 'bg-danger-subtle border border-danger'">
-                                                                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                                                                <span class="fw-medium fs-5">Untung Bersih Usaha (Laba Bersih)</span>
-                                                                                <span class="tnum fw-bold fs-5"
-                                                                                    :class="$report['labaBersih'] >= 0 ? 'text-success' : 'text-danger'">@rupiah($report['labaBersih'])</span>
-                                                                            </div>
-                                                                            <div class="d-flex justify-content-between small">
-                                                                                <span>Untung dari jualan (Laba Kotor)</span>
-                                                                                <span>@rupiah($report['labaKotor'])</span>
-                                                                            </div>
-                                                                            <div class="d-flex justify-content-between small text-danger">
-                                                                                <span>− Biaya menjalankan usaha</span>
-                                                                                <span>@rupiah($biayaOperasionalTotal)</span>
-                                                                            </div>
-                                                                            <p class="ld-caption mb-0">
-                                                                                <i class="bi bi-check-circle me-1"><strong>Keterangan:</strong></i> untung usaha
-                                                                                pada periode ini.
-                                                                            </p>
-                                                                        </div>
-
-                                                                        {{-- Arus Kas --}}
-                                                                        <div class="p-3  border border-primary rounded">
-                                                                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                                                                <span class="fw-medium fs-5">Uang Kas Tersedia (Arus Kas Bersih)</span>
-                                                                                <span class="tnum fw-bold fs-5">@rupiah($report['arusKasBersih'])</span>
-                                                                            </div>
-                                                                            <div class="d-flex justify-content-between small text-muted">
-                                                                                <span>Semua uang masuk (jualan + modal)</span>
-                                                                                <span>@rupiah($report['arusKasMasuk'])</span>
-                                                                            </div>
-                                                                            <div class="d-flex justify-content-between small text-danger">
-                                                                                <span>− Semua uang keluar (belanja + operasional)</span>
-                                                                                <span>@rupiah($report['arusKasKeluar'])</span>
-                                                                            </div>
-                                                                            <p class="ld-caption mb-0 text-muted">
-                                                                                <i class="bi bi-info-circle me-1"><strong>Keterangan:</strong></i><strong>Beda dengan Laba
-                                                                                    Bersih!</strong> Ini cek kas
-                                                                                riil. Termasuk modal masuk, belanja bahan (bukan HPP).
-                                                                            </p>
-                                                                        </div>
-                                                                    </div>
-                                                                </x-app-card>
-                                                            </template> -->
+                                                                            </x-app-card>
+                                                                        </template> -->
 
             {{-- TAMPILAN RINCI (accounting style) --}}
             <!-- <template x-if="viewMode === 'detail'">
-                                                            <x-app-card class="mb-4" eyebrow="Rincian" title="Struktur Laba Rugi (Bertingkat)">
-                                                                <div class="d-flex flex-column gap-2">
-                                                                    <div class="d-flex justify-content-between"><span>Penjualan (kotor)</span><span
-                                                                            class="tnum">@rupiah($report['penjualan'])</span></div>
-                                                                    <div class="d-flex justify-content-between text-danger"><span>− Retur Penjualan</span><span
-                                                                            class="tnum">@rupiah($report['returTotal'])</span></div>
-                                                                    <div class="d-flex justify-content-between fw-medium"><span>= Pendapatan Bersih</span><span
-                                                                            class="tnum">@rupiah($report['pendapatanBersih'])</span></div>
-                                                                    <div class="d-flex justify-content-between text-danger"><span>− HPP (terjual)</span><span
-                                                                            class="tnum">@rupiah($report['hppPenjualan'])</span></div>
-                                                                    <div class="d-flex justify-content-between text-danger"><span>−/+ Penyesuaian HPP</span><span
-                                                                            class="tnum">@rupiah($report['hppPenyesuaianTotal'])</span></div>
-                                                                    <div class="d-flex justify-content-between fw-medium"><span>= Laba Kotor</span><span
-                                                                            class="tnum">@rupiah($report['labaKotor'])</span></div>
-                                                                    {{-- Breakdown Beban Operasional (non bahan baku) --}}
-                                                                    @php
-                                                                        $operasionalCategories = collect($report['expenseByCategory'])->where('is_bahan_baku', false)->sortByDesc('total')->values();
-                                                                        $biayaOperasionalTotal = $operasionalCategories->sum('total');
-                                                                    @endphp
-                                                                    @foreach ($operasionalCategories as $cat)
-                                                                        <div class="d-flex justify-content-between text-danger ps-4"><span>− {{ $cat['nama'] }}</span><span
-                                                                                class="tnum">@rupiah($cat['total'])</span></div>
-                                                                    @endforeach
-                                                                    <div class="d-flex justify-content-between text-danger fw-medium"><span>− Total Beban
-                                                                            Operasional</span><span class="tnum">@rupiah($biayaOperasionalTotal)</span></div>
-                                                                    <div class="d-flex justify-content-between fw-bold"><span>= Laba Bersih</span><span
-                                                                            class="tnum">@rupiah($report['labaBersih'])</span></div>
-                                                                    <hr>
-                                                                    <div class="d-flex justify-content-between"><span>Pengeluaran Kas (semua)</span><span
-                                                                            class="tnum">@rupiah($report['pengeluaranKas'])</span></div>
-                                                                    <div class="d-flex justify-content-between"><span>· Pembelian Bahan Baku</span><span
-                                                                            class="tnum text-muted">@rupiah($report['pembelianBahanBaku'])</span></div>
-                                                                    <div class="d-flex justify-content-between"><span>· Beban Operasional</span><span
-                                                                            class="tnum text-muted">@rupiah($report['biayaOperasional'])</span></div>
-                                                                    <hr>
-                                                                    <div class="d-flex justify-content-between"><span>Modal / Setoran Pemilik (kas masuk)</span><span
-                                                                            class="tnum">@rupiah($report['modalMasuk'])</span></div>
-                                                                    <div class="d-flex justify-content-between text-danger"><span>Hutang / Piutang Pemilik (kas keluar)</span><span
-                                                                            class="tnum">@rupiah($report['hutangPiutang'])</span></div>
-                                                                    <div class="d-flex justify-content-between"><span>Kas masuk total</span><span
-                                                                            class="tnum">@rupiah($report['arusKasMasuk'])</span></div>
-                                                                    <div class="d-flex justify-content-between fw-medium"><span>= Arus Kas Bersih <span
-                                                                                class="ld-mono-caps text-muted">(bukan laba)</span></span><span
-                                                                            class="tnum">@rupiah($report['arusKasBersih'])</span></div>
-                                                                    <p class="ld-caption mb-0">Bahan Baku keluar tercatat di kas, tetapi masuk ke beban laba rugi lewat HPP
-                                                                        saat
-                                                                        produk terjual. Modal bukan pendapatan — hanya menambah kas masuk.</p>
-                                                                </div>
-                                                            </x-app-card>
-                                                        </template> -->
+                                                                        <x-app-card class="mb-4" eyebrow="Rincian" title="Struktur Laba Rugi (Bertingkat)">
+                                                                            <div class="d-flex flex-column gap-2">
+                                                                                <div class="d-flex justify-content-between"><span>Penjualan (kotor)</span><span
+                                                                                        class="tnum">@rupiah($report['penjualan'])</span></div>
+                                                                                <div class="d-flex justify-content-between text-danger"><span>− Retur Penjualan</span><span
+                                                                                        class="tnum">@rupiah($report['returTotal'])</span></div>
+                                                                                <div class="d-flex justify-content-between fw-medium"><span>= Pendapatan Bersih</span><span
+                                                                                        class="tnum">@rupiah($report['pendapatanBersih'])</span></div>
+                                                                                <div class="d-flex justify-content-between text-danger"><span>− HPP (terjual)</span><span
+                                                                                        class="tnum">@rupiah($report['hppPenjualan'])</span></div>
+                                                                                <div class="d-flex justify-content-between text-danger"><span>−/+ Penyesuaian HPP</span><span
+                                                                                        class="tnum">@rupiah($report['hppPenyesuaianTotal'])</span></div>
+                                                                                <div class="d-flex justify-content-between fw-medium"><span>= Laba Kotor</span><span
+                                                                                        class="tnum">@rupiah($report['labaKotor'])</span></div>
+                                                                                {{-- Breakdown Beban Operasional (non bahan baku) --}}
+                                                                                @php
+                                                                                    $operasionalCategories = collect($report['expenseByCategory'])->where('is_bahan_baku', false)->sortByDesc('total')->values();
+                                                                                    $biayaOperasionalTotal = $operasionalCategories->sum('total');
+                                                                                @endphp
+                                                                                @foreach ($operasionalCategories as $cat)
+                                                                                    <div class="d-flex justify-content-between text-danger ps-4"><span>− {{ $cat['nama'] }}</span><span
+                                                                                            class="tnum">@rupiah($cat['total'])</span></div>
+                                                                                @endforeach
+                                                                                <div class="d-flex justify-content-between text-danger fw-medium"><span>− Total Beban
+                                                                                        Operasional</span><span class="tnum">@rupiah($biayaOperasionalTotal)</span></div>
+                                                                                <div class="d-flex justify-content-between fw-bold"><span>= Laba Bersih</span><span
+                                                                                        class="tnum">@rupiah($report['labaBersih'])</span></div>
+                                                                                <hr>
+                                                                                <div class="d-flex justify-content-between"><span>Pengeluaran Kas (semua)</span><span
+                                                                                        class="tnum">@rupiah($report['pengeluaranKas'])</span></div>
+                                                                                <div class="d-flex justify-content-between"><span>· Pembelian Bahan Baku</span><span
+                                                                                        class="tnum text-muted">@rupiah($report['pembelianBahanBaku'])</span></div>
+                                                                                <div class="d-flex justify-content-between"><span>· Beban Operasional</span><span
+                                                                                        class="tnum text-muted">@rupiah($report['biayaOperasional'])</span></div>
+                                                                                <hr>
+                                                                                <div class="d-flex justify-content-between"><span>Modal / Setoran Pemilik (kas masuk)</span><span
+                                                                                        class="tnum">@rupiah($report['modalMasuk'])</span></div>
+                                                                                <div class="d-flex justify-content-between text-danger"><span>Hutang / Piutang Pemilik (kas keluar)</span><span
+                                                                                        class="tnum">@rupiah($report['hutangPiutang'])</span></div>
+                                                                                <div class="d-flex justify-content-between"><span>Kas masuk total</span><span
+                                                                                        class="tnum">@rupiah($report['arusKasMasuk'])</span></div>
+                                                                                <div class="d-flex justify-content-between fw-medium"><span>= Arus Kas Bersih <span
+                                                                                            class="ld-mono-caps text-muted">(bukan laba)</span></span><span
+                                                                                        class="tnum">@rupiah($report['arusKasBersih'])</span></div>
+                                                                                <p class="ld-caption mb-0">Bahan Baku keluar tercatat di kas, tetapi masuk ke beban laba rugi lewat HPP
+                                                                                    saat
+                                                                                    produk terjual. Modal bukan pendapatan — hanya menambah kas masuk.</p>
+                                                                            </div>
+                                                                        </x-app-card>
+                                                                    </template> -->
 
             @if (!$report['hasData'])
                 <x-app-card>

@@ -59,7 +59,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/income/nota/{nomorTransaksi}', [SalesReceiptController::class, 'show'])->name('income.nota');
     Route::get('/income/nota/{nomorTransaksi}/pdf', [SalesReceiptController::class, 'pdf'])->name('income.nota.pdf');
 
-    // Retur penjualan (lihat Bagian 2.4 & 4 dokumen acuan)
+    // Retur penjualan
     Route::get('/sales-returns', [SalesReturnController::class, 'index']);
     Route::post('/sales-returns', [SalesReturnController::class, 'store']);
     Route::delete('/sales-returns/{salesReturn}', [SalesReturnController::class, 'destroy'])->middleware('role:admin');
@@ -69,7 +69,7 @@ Route::middleware('auth')->group(function () {
     Route::match(['put', 'patch'], '/expenses/{expense}', [ExpenseController::class, 'update']);
     Route::delete('/expenses/{expense}', [ExpenseController::class, 'destroy']);
 
-    // Modal / setoran pemilik — admin only (lihat Bagian 2.1)
+    // Modal / setoran pemilik — admin only
     Route::get('/capital', [CapitalController::class, 'index'])->middleware('role:admin');
     Route::post('/capital', [CapitalController::class, 'store'])->middleware('role:admin');
     Route::post('/capital/debt-payments', [CapitalController::class, 'pay'])->middleware('role:admin');
