@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('title', 'Modal')
-@section('topbar-title', 'Modal dan Hutang Piutang')
+@section('topbar-title', 'Modal dan Hutang')
 
 @push('scripts')
     @vite(['resources/js/pages.js'])
@@ -10,7 +10,7 @@
 @section('content')
     <div x-data="capital(@js($modal), @js($hutang), @js($penggunaById), @js($currentUser), @js($totalDebt))">
 
-        <x-page-header eyebrow="Pembiayaan" title="Modal / Hutang Piutang">
+        <x-page-header eyebrow="Pembiayaan" title="Modal dan Hutang">
             <x-slot:actions>
                 <x-button variant="success" icon="plus" @click="openAdd()">Catat Modal</x-button>
                 <x-button variant="app" icon="cash" @click="openPayDebt()">Bayar Hutang</x-button>
@@ -62,10 +62,10 @@
                     <template x-for="row in visibleRows" :key="row.id">
                         <tbody>
                             <tr :class="[
-                                        row.dihapus_pada ? 'ld-row-deleted' : '',
-                                        row.is_hutang ? 'ld-row-expandable' : '',
-                                        expandedId === row.id ? 'ld-row-expanded' : '',
-                                    ].filter(Boolean).join(' ')" @click="toggleExpand(row)">
+                                                        row.dihapus_pada ? 'ld-row-deleted' : '',
+                                                        row.is_hutang ? 'ld-row-expandable' : '',
+                                                        expandedId === row.id ? 'ld-row-expanded' : '',
+                                                    ].filter(Boolean).join(' ')" @click="toggleExpand(row)">
                                 <td class="text-center"><span class="ld-mono-caps" x-show="row.is_hutang"
                                         x-text="expandedId === row.id ? '▾' : '▸'" x-cloak></span></td>
                                 <td class="tnum" x-text="row.tanggal?.split('-').reverse().join('/')"></td>
@@ -128,7 +128,7 @@
                 </table>
             </x-data-table>
             <template x-if="visibleRows.length === 0">
-                <x-empty-state icon="○" text="Belum ada catatan modal atau hutang/piutang." />
+                <x-empty-state icon="○" text="Belum ada catatan modal atau hutang." />
             </template>
         </x-app-card>
 
@@ -179,7 +179,7 @@
             @click.self="modalOpen = false" x-transition.opacity>
             <div class="ld-modal__dialog" x-transition>
                 <div class="ld-modal__header">
-                    <h5 class="ld-modal__title">Catat Modal / Hutang Piutang</h5>
+                    <h5 class="ld-modal__title">Catat Modal / Hutang</h5>
                     <button type="button" class="btn-close" @click="modalOpen = false" aria-label="Tutup"></button>
                 </div>
                 <div class="ld-modal__body">
@@ -197,13 +197,13 @@
                                 @keydown="form.nominal = updateRupiahSign($event, form.nominal)"
                                 @input="form.nominal = updateRupiahInput($event)">
                             <div class="ld-field-error" x-show="errors.nominal" x-text="errors.nominal"></div>
-                            <p class="ld-caption mt-1 mb-0">Positif untuk modal; negatif untuk hutang/piutang. Nilai 0 tidak
+                            <p class="ld-caption mt-1 mb-0">Positif untuk modal; negatif untuk hutang. Nilai 0 tidak
                                 diperbolehkan.</p>
                         </div>
                         <div class="full">
                             <label class="form-label">Keterangan</label>
                             <textarea class="form-control" rows="2" x-model="form.keterangan"
-                                placeholder="mis. Setoran modal, Pembayaran hutang, Piutang pemilik"></textarea>
+                                placeholder="mis. Setoran modal, Pembayaran hutang."></textarea>
                         </div>
                     </div>
                 </div>
