@@ -1,6 +1,8 @@
 <?php
 
 use App\Models\CapitalInjection;
+use App\Models\Debt;
+use App\Models\DebtPayment;
 use App\Models\Expense;
 use App\Models\ExpenseCategory;
 use App\Models\Income;
@@ -373,5 +375,34 @@ describe('retur dari income yang di-soft-delete diabaikan', function () {
         expect($response->json('summary.returTotal'))->toBe(0);
         expect($response->json('summary.pendapatanBersih'))->toBe(0);
         expect($response->json('summary.arusKasKeluar'))->toBe(0);
+    });
+});
+
+describe('arus kas bersih — pembayaran hutang dari kas usaha', function () {
+    it('menampilkan pembayaranHutangKas di summary dashboard (baris kartu Arus Kas Bersih)', function () {
+        $admin = User::factory()->admin()->create();
+        $debt = Debt::factory()->create(['user_id' => $admin->id, 'nominal' => 1000000]);
+
+        DebtPayment::create([
+            'debt_id' => $debt->id,
+            'user_id' => $admin->id,
+            'tanggal' => AppTimezone::todayDateString(),
+            'nominal' => 250000,
+            'sumber' => 'kas_usaha',
+        ]);
+        DebtPayment::create([
+            'debt_id' => $debt->id,
+            'user_id' => $admin->id,
+            'tanggal' => AppTimezone::todayDateString(),
+            'nominal' => 100000,
+            'sumber' => 'dana_pribadi',
+        ]);
+
+        $response = $this->actingAs($admin)->getJson('/api/dashboard?period=bulan_ini');
+
+        // Hanya pembayaran dari kas usaha yang keluar dari kas dan tampil di baris kartu.
+        expect($response->json('summary.pembayaranHutangKas'))->toBe(250000);
+        expect($response->json('summary.arusKasKeluar'))->toBe(250000);
+        expect($response->json('summary.arusKasBersih'))->toBe(-250000);
     });
 });

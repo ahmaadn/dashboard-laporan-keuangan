@@ -94,6 +94,7 @@ final class DashboardService
                 'modalTotal' => $metrics['modalTotal'],
                 'modalMasuk' => $metrics['modalMasuk'],
                 'hutangPiutang' => $metrics['hutangPiutang'],
+                'pembayaranHutangKas' => $metrics['pembayaranHutangKas'],
                 'returKeluar' => $metrics['returKeluar'],
                 'arusKasMasuk' => $metrics['arusKasMasuk'],
                 'arusKasKeluar' => $metrics['arusKasKeluar'],
