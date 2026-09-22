@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Resources\SalesReturnResource;
 use App\Models\Income;
 use App\Models\Product;
 use App\Models\SalesReturn;
@@ -205,6 +206,115 @@ describe('sales return page access', function () {
     it('allows authenticated users', function () {
         $user = User::factory()->pegawai()->create();
         $this->actingAs($user)->get('/sales-returns')->assertOk();
+    });
+});
+
+describe('sales return resource', function () {
+    it('exposes nomor_transaksi of the origin income', function () {
+        $admin = User::factory()->admin()->create();
+        $product = Product::factory()->create();
+        $income = Income::factory()->create([
+            'product_id' => $product->id,
+            'user_id' => $admin->id,
+            'nomor_transaksi' => 'TRX-TEST-0001',
+        ]);
+        $retur = SalesReturn::factory()->create([
+            'income_id' => $income->id,
+            'product_id' => $product->id,
+            'user_id' => $admin->id,
+        ]);
+
+        $payload = SalesReturnResource::make($retur->load('income'))->resolve();
+
+        expect($payload['nomor_transaksi'])->toBe('TRX-TEST-0001');
+    });
+});
+
+describe('sales return origin search', function () {
+    it('lists only income lines that still have remaining retur', function () {
+        $admin = User::factory()->admin()->create();
+        $product = Product::factory()->create(['nama' => 'Dompet Kulit']);
+        $partial = Income::factory()->create([
+            'product_id' => $product->id,
+            'user_id' => $admin->id,
+            'nomor_transaksi' => 'TRX-20260101-0001',
+            'jumlah' => 5,
+            'harga_satuan' => 100000,
+        ]);
+        $full = Income::factory()->create([
+            'product_id' => $product->id,
+            'user_id' => $admin->id,
+            'nomor_transaksi' => 'TRX-20260101-0002',
+            'jumlah' => 3,
+            'harga_satuan' => 100000,
+        ]);
+
+        SalesReturn::factory()->create(['income_id' => $partial->id, 'product_id' => $product->id, 'user_id' => $admin->id, 'jumlah' => 2]);
+        SalesReturn::factory()->create(['income_id' => $full->id, 'product_id' => $product->id, 'user_id' => $admin->id, 'jumlah' => 3]);
+
+        $options = $this->actingAs($admin)->getJson('/sales-returns/search')->assertOk()->json('options');
+        $ids = array_column($options, 'id');
+
+        expect($ids)->toContain($partial->id);
+        expect($ids)->not->toContain($full->id);
+
+        $row = collect($options)->firstWhere('id', $partial->id);
+        expect($row['nomor_transaksi'])->toBe('TRX-20260101-0001');
+        expect($row['sisa_retur'])->toBe(3);
+        expect($row['nama_produk'])->toBe('Dompet Kulit');
+    });
+
+    it('excludes soft-deleted incomes and ignores soft-deleted returs', function () {
+        $admin = User::factory()->admin()->create();
+        $product = Product::factory()->create();
+        $deleted = Income::factory()->softDeleted()->create(['product_id' => $product->id, 'user_id' => $admin->id]);
+        $income = Income::factory()->create(['product_id' => $product->id, 'user_id' => $admin->id, 'jumlah' => 4]);
+
+        $retur = SalesReturn::factory()->create(['income_id' => $income->id, 'product_id' => $product->id, 'user_id' => $admin->id, 'jumlah' => 4]);
+        $retur->delete();
+
+        $options = $this->actingAs($admin)->getJson('/sales-returns/search')->assertOk()->json('options');
+        $ids = array_column($options, 'id');
+
+        expect($ids)->toContain($income->id);
+        expect($ids)->not->toContain($deleted->id);
+    });
+
+    it('filters by nomor transaksi and product name', function () {
+        $admin = User::factory()->admin()->create();
+        $product = Product::factory()->create(['nama' => 'Sabuk Premium']);
+        $matching = Income::factory()->create([
+            'product_id' => $product->id,
+            'user_id' => $admin->id,
+            'nomor_transaksi' => 'TRX-20260315-0007',
+        ]);
+        $other = Income::factory()->create([
+            'product_id' => Product::factory()->create(['nama' => 'Ikat Pinggang']),
+            'user_id' => $admin->id,
+            'nomor_transaksi' => 'TRX-20260315-0008',
+        ]);
+
+        $byNomor = $this->actingAs($admin)->getJson('/sales-returns/search?q=20260315-0007')->assertOk()->json('options');
+        expect(array_column($byNomor, 'id'))->toBe([$matching->id]);
+        expect(array_column($byNomor, 'id'))->not->toContain($other->id);
+
+        $byProduct = $this->actingAs($admin)->getJson('/sales-returns/search?q=Sabuk')->assertOk()->json('options');
+        expect(array_column($byProduct, 'id'))->toBe([$matching->id]);
+    });
+
+    it('pins the requested income_id into the options', function () {
+        $admin = User::factory()->admin()->create();
+        $pinned = Income::factory()->create([
+            'user_id' => $admin->id,
+            'nomor_transaksi' => 'TRX-20190101-0001',
+        ]);
+
+        $options = $this->actingAs($admin)
+            ->getJson("/sales-returns/search?income_id={$pinned->id}")
+            ->assertOk()
+            ->json('options');
+
+        expect(array_column($options, 'id'))->toContain($pinned->id);
     });
 });
 

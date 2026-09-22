@@ -61,6 +61,7 @@ Route::middleware('auth')->group(function () {
 
     // Retur penjualan
     Route::get('/sales-returns', [SalesReturnController::class, 'index']);
+    Route::get('/sales-returns/search', [SalesReturnController::class, 'search']);
     Route::post('/sales-returns', [SalesReturnController::class, 'store']);
     Route::delete('/sales-returns/{salesReturn}', [SalesReturnController::class, 'destroy'])->middleware('role:admin');
 

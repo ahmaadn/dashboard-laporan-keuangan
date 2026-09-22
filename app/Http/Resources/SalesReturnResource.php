@@ -14,6 +14,7 @@ class SalesReturnResource extends JsonResource
         return [
             'id' => $this->id,
             'id_penjualan' => $this->income_id,
+            'nomor_transaksi' => $this->whenLoaded('income', fn () => $this->income?->nomor_transaksi),
             'id_produk' => $this->product_id,
             'nama_produk' => $this->whenLoaded('product', fn () => $this->product?->nama),
             'id_pengguna' => $this->user_id,

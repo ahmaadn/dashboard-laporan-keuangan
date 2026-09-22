@@ -1367,6 +1367,11 @@ const salesReturns = (rows, currentUser) => ({
     deleteTarget: null,
     toast: '',
     saving: false,
+    penjualanQuery: '',
+    penjualanOptions: [],
+    penjualanLoading: false,
+    selectedPenjualan: null,
+    pinnedIncomeId: '',
 
     init() {
         const params = new URLSearchParams(window.location.search);
@@ -1382,22 +1387,75 @@ const salesReturns = (rows, currentUser) => ({
         }
         const q = this.search.toLowerCase();
 
-        return this.rows.filter((r) => `${r.tanggal || ''} ${r.id_penjualan} ${r.nama_produk || ''} ${r.alasan || ''}`.toLowerCase().includes(q));
+        return this.rows.filter((r) =>
+            `${r.tanggal || ''} ${r.id_penjualan} ${r.nomor_transaksi || ''} ${r.nama_produk || ''} ${r.alasan || ''}`
+                .toLowerCase()
+                .includes(q)
+        );
     },
 
     openAdd(incomeId = '') {
         this.form = {
-            id_penjualan: incomeId ? String(incomeId) : '',
+            id_penjualan: '',
             tanggal: todayStr(),
             jumlah: 1,
             alasan: '',
         };
         this.errors = {};
+        this.pinnedIncomeId = incomeId ? String(incomeId) : '';
+        this.penjualanQuery = '';
+        this.penjualanOptions = [];
+        this.selectedPenjualan = null;
         this.modalOpen = true;
+        this.loadPenjualanOptions();
+    },
+
+    async loadPenjualanOptions() {
+        this.penjualanLoading = true;
+        const params = new URLSearchParams();
+        if (this.penjualanQuery.trim()) {
+            params.set('q', this.penjualanQuery.trim());
+        }
+        if (this.pinnedIncomeId) {
+            params.set('income_id', this.pinnedIncomeId);
+        }
+
+        const res = await apiFetch(`/sales-returns/search?${params.toString()}`);
+        this.penjualanLoading = false;
+        if (!res.success) {
+            return;
+        }
+
+        this.penjualanOptions = res.options || [];
+        if (this.pinnedIncomeId) {
+            const pinned = this.penjualanOptions.find((o) => String(o.id) === this.pinnedIncomeId);
+            if (pinned) {
+                this.pilihPenjualan(pinned);
+            }
+        }
+    },
+
+    pilihPenjualan(option) {
+        this.selectedPenjualan = option;
+        this.form.id_penjualan = String(option.id);
+        this.form.jumlah = Math.min(Math.max(1, Number(this.form.jumlah) || 1), option.sisa_retur);
+        this.errors = {};
+    },
+
+    gantiPenjualan() {
+        this.selectedPenjualan = null;
+        this.form.id_penjualan = '';
+        this.pinnedIncomeId = '';
+        this.loadPenjualanOptions();
     },
 
     async save() {
         this.errors = {};
+        if (!this.selectedPenjualan) {
+            this.errors = { id_penjualan: 'Pilih penjualan asal terlebih dahulu.' };
+
+            return;
+        }
         this.saving = true;
         const body = JSON.stringify({
             id_penjualan: Number(this.form.id_penjualan),

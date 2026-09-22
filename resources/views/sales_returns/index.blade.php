@@ -25,7 +25,7 @@
         <x-app-card class="mb-4">
             <div class="d-flex justify-content-between align-items-center mb-3 gap-2">
                 <input type="search" class="form-control" style="max-width: 320px"
-                    placeholder="Cari tanggal, penjualan, alasan…" x-model="search">
+                    placeholder="Cari tanggal, nomor transaksi, produk, alasan…" x-model="search">
                 <span class="ld-mono-caps" x-text="visibleRows.length + ' retur'"></span>
             </div>
 
@@ -47,7 +47,11 @@
                         <template x-for="row in visibleRows" :key="row.id">
                             <tr :class="row.dihapus_pada ? 'ld-row-deleted' : ''">
                                 <td class="tnum" x-text="row.tanggal?.split('-').reverse().join('/')"></td>
-                                <td class="ld-mono-caps" x-text="'#' + row.id_penjualan"></td>
+                                {{--<td class="ld-mono-caps"
+                                    x-text="row.nomor_transaksi ? (row.nomor_transaksi + ' · #' + row.id_penjualan) : ('#' + row.id_penjualan)">
+                                </td>--}}
+                                <td class="ld-mono-caps" x-text="row.nomor_transaksi">
+                                </td>
                                 <td x-text="row.nama_produk || (row.id_produk ? ('Produk #' + row.id_produk) : '—')"></td>
                                 <td class="text-end tnum" x-text="row.jumlah"></td>
                                 <td class="text-end tnum fw-medium text-danger" x-text="rupiah(row.nominal_retur)"></td>
@@ -83,16 +87,58 @@
                     <div class="ld-form-grid">
                         <div class="full">
                             <label class="form-label">Penjualan Asal <span class="req">*</span></label>
-                            <input type="number" min="1" class="form-control"
-                                :class="errors.id_penjualan ? 'ld-input-invalid' : ''" x-model="form.id_penjualan"
-                                placeholder="Masukkan ID penjualan (mis. 12)">
-                            <div class="ld-field-error" x-show="errors.id_penjualan" x-text="errors.id_penjualan"></div>
-                            <p class="ld-caption mt-1 mb-0">Lihat ID penjualan di halaman Pemasukan.</p>
+
+                            <div class="border rounded p-2" x-show="selectedPenjualan" x-cloak>
+                                <div class="d-flex justify-content-between align-items-start gap-2">
+                                    <div>
+                                        <span class="ld-mono-caps"
+                                            x-text="selectedPenjualan?.nomor_transaksi || ('#' + selectedPenjualan?.id)"></span>
+                                        <span x-text="' · ' + (selectedPenjualan?.nama_produk || 'Tanpa produk')"></span>
+                                        <p class="ld-caption mb-0">
+                                            <span class="tnum"
+                                                x-text="selectedPenjualan?.tanggal_transaksi?.split('-').reverse().join('/')"></span>
+                                            · Sisa retur <span class="tnum" x-text="selectedPenjualan?.sisa_retur"></span>
+                                            dari
+                                            <span class="tnum" x-text="selectedPenjualan?.jumlah"></span>
+                                        </p>
+                                    </div>
+                                    <button type="button" class="ld-action-link ld-action-link--neutral"
+                                        @click="gantiPenjualan()">Ganti</button>
+                                </div>
+                            </div>
+
+                            <div x-show="!selectedPenjualan">
+                                <input type="text" class="form-control"
+                                    :class="errors.id_penjualan ? 'ld-input-invalid' : ''" x-model="penjualanQuery"
+                                    @input.debounce.300ms="loadPenjualanOptions()"
+                                    placeholder="Cari nomor transaksi (mis. TRX-20260922-0001), nama produk, atau ID">
+                                <div class="ld-field-error" x-show="errors.id_penjualan" x-text="errors.id_penjualan">
+                                </div>
+                                <div class="border rounded mt-2" style="max-height: 220px; overflow-y: auto"
+                                    x-show="penjualanLoading || penjualanOptions.length > 0" x-cloak>
+                                    <p class="ld-caption p-2 mb-0" x-show="penjualanLoading">Mencari…</p>
+                                    <template x-for="opt in penjualanOptions" :key="opt.id">
+                                        <button type="button"
+                                            class="d-flex w-100 align-items-center gap-2 text-start border-0 border-bottom bg-transparent px-3 py-2"
+                                            @click="pilihPenjualan(opt)">
+                                            <span class="ld-mono-caps"
+                                                x-text="opt.nomor_transaksi || ('#' + opt.id)"></span>
+                                            <span class="flex-grow-1" x-text="opt.nama_produk || 'Tanpa produk'"></span>
+                                            <span class="ld-caption tnum"
+                                                x-text="opt.tanggal_transaksi?.split('-').reverse().join('/') + ' · sisa ' + opt.sisa_retur"></span>
+                                        </button>
+                                    </template>
+                                </div>
+                                <p class="ld-caption mt-1 mb-0">
+                                    Hanya penjualan yang masih menyisakan retur yang tampil. Lihat juga halaman
+                                    Pemasukan → tombol Retur.
+                                </p>
+                            </div>
                         </div>
                         <div>
                             <label class="form-label">Tanggal Retur <span class="req">*</span></label>
-                            <input type="date" class="form-control" :max="today" :class="errors.tanggal ? 'ld-input-invalid' : ''"
-                                x-model="form.tanggal">
+                            <input type="date" class="form-control" :max="today"
+                                :class="errors.tanggal ? 'ld-input-invalid' : ''" x-model="form.tanggal">
                             <div class="ld-field-error" x-show="errors.tanggal" x-text="errors.tanggal"></div>
                         </div>
                         <div>
@@ -114,7 +160,8 @@
                 </div>
                 <div class="ld-modal__footer">
                     <x-button variant="secondary" icon="close" @click="modalOpen = false">Batal</x-button>
-                    <x-button variant="app" icon="check" ::disabled="saving" ::class="saving ? 'is-loading' : ''" @click="save()">Simpan</x-button>
+                    <x-button variant="app" icon="check" ::disabled="saving" ::class="saving ? 'is-loading' : ''"
+                        @click="save()">Simpan</x-button>
                 </div>
             </div>
         </div>
@@ -127,10 +174,12 @@
                     <h5 class="ld-modal__title">Hapus Retur?</h5>
                 </div>
                 <div class="ld-modal__body">
-                    <p class="mb-0">Retur penjualan <strong>#<span x-text="deleteTarget?.id_penjualan"></span></strong>
+                    <p class="mb-0">Retur penjualan
+                        <strong x-text="deleteTarget?.nomor_transaksi || ('#' + deleteTarget?.id_penjualan)"></strong>
                         sebesar <strong x-text="deleteTarget ? rupiah(deleteTarget.nominal_retur) : ''"></strong> akan
                         dihapus. Stok yang sebelumnya dikembalikan dari retur akan dikurangi kembali agar tidak
-                        double-count.</p>
+                        double-count.
+                    </p>
                 </div>
                 <div class="ld-modal__footer">
                     <x-button variant="secondary" icon="close" @click="deleteTarget = null">Batal</x-button>
